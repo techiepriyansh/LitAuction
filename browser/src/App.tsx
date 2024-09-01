@@ -1,4 +1,5 @@
 import { connectToLit } from "./connect";
+import { litMain } from "./lit/main";
 
 function App() {
 
@@ -7,7 +8,7 @@ function App() {
       <div className="card">
       <hr />
         <h3>Simple LitNodeClient Connection</h3>
-        <button onClick={async () => await connectToLit()}>
+        <button onClick={async () => await litMain()}>
         Connect
         </button>
         <h5> Check the browser console! </h5>
