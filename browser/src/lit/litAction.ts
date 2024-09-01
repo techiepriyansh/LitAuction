@@ -7,12 +7,14 @@ const _litActionCode = async () => {
         hash: "e3761531b64ebc6b9d728632e195697e27f33ea4bd0282392d7d59712e8d178b",
     }
 
+    const CHAIN = 'ethereum';
+
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
         ciphertext: GENESIS_RANDOMNESS.ct,
         dataToEncryptHash: GENESIS_RANDOMNESS.hash,
         authSig: null,
-        chain: 'ethereum',
+        chain: CHAIN,
     });
 
     const userRandPt = await Lit.Actions.decryptAndCombine({
@@ -20,7 +22,7 @@ const _litActionCode = async () => {
         ciphertext: pUserRandCt,
         dataToEncryptHash: pUserRandHash,
         authSig: null,
-        chain: 'ethereum',
+        chain: CHAIN,
     });
 
     const genesisRandBytes = ethers.utils.arrayify(genesisRandPt);
@@ -29,8 +31,14 @@ const _litActionCode = async () => {
     const combinedRandBytes = ethers.utils.keccak256(ethers.utils.concat([userRandBytes, genesisRandBytes]));
     const auxWallet = new ethers.Wallet(combinedRandBytes); 
 
+    const rpcUrl = await Lit.Actions.getRpcUrl({ chain: CHAIN });
+    const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+    const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
+
     const retVal = {
         auxWalletAddress: auxWallet.address,
+        auxWalletBal,
     };
 
     Lit.Actions.setResponse({ response: JSON.stringify(retVal) });
