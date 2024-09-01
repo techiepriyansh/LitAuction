@@ -7,6 +7,8 @@ import {ethers} from 'ethers';
 
 import { litActionCode } from './litAction';
 
+const CHAIN = 'sepolia';
+
 const url = `<your http endpoint for api-key usage>`;
 const key = '0x1cb7af425ea1c5c6cd9ab3290423881218fab4af3c2160abbaaf537ffac90ca2';
 
@@ -25,7 +27,7 @@ const genProvider = () => {
 const genWallet = () => {
 // known private key for testing
 // replace with your own key
-return new ethers.Wallet('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', genProvider());
+return new ethers.Wallet(import.meta.env.VITE_TEST_WALLET_PRIVATE_KEY, genProvider());
 }
 
 const genAuthSig = async (
@@ -59,7 +61,7 @@ const genSession = async (
     client: LitNodeClient,
     resources: LitResourceAbilityRequest[]) => {
     let sessionSigs = await client.getSessionSigs({
-        chain: "ethereum",
+        chain: CHAIN,
         resourceAbilityRequests: resources,
         authNeededCallback: async (params: AuthCallbackParams) => {
           console.log("resourceAbilityRequests:", params.resources);
@@ -93,7 +95,7 @@ export const litMain = async () => {
     });
 
     const wallet = genWallet();
-    const chain = 'ethereum';
+    const chain = CHAIN;
     // lit action will allow anyone to decrypt this api key with a valid authSig
     const accessControlConditions = [
         {

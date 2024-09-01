@@ -3,11 +3,11 @@
 const _litActionCode = async () => {
     // TODO: change this to secure randomness, with only this action being able to decrypt it
     const GENESIS_RANDOMNESS = {
-        ct: "sMmAorR5FvheQNUm7UMT5TQ+N+Ru8lWpm/RCQj2I/g9Oc6InWkcPod02560lvy+m2v4rR55Ai4rJi+XvbRIEx2kr+W85F61gQGONOPjui2hDn1EXLQno2FSoZrkjPN0G4cvj8oy05wwq0mR0XVVqTqruZce0uYTf0F4+c3WoW7CibKZbK2DBu7iw8knecJLIc0Xw8gI=",
-        hash: "e3761531b64ebc6b9d728632e195697e27f33ea4bd0282392d7d59712e8d178b",
+        ct: "sBjWTjkYfaqS5q+JDeIwQP64LJeY/gwuOw2oYEPZxtGH0YWSa/77C/9x+FRSOSMXFoPpu7cPqW0dHU22557YsUp7dbR4B/hl94rhxiaD07JD3M1K6XaUFPe+xPJ8wjzW4UTKwGeLh/SaNppU41sZvmEBOSmbcEDfeFtMXnRAr2FE8/huA/Y5vb2ZtRZA/LTpfUSr7AI=",
+        hash: "3900f4496392e04aca614ed7e63d5081574ac203543fa7259b67c5d765b9f977",
     }
 
-    const CHAIN = 'ethereum';
+    const CHAIN = 'sepolia';
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
