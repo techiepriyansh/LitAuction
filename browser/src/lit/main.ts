@@ -9,10 +9,9 @@ import { litActionCode } from './litAction';
 
 const CHAIN = 'sepolia';
 
-const url = `<your http endpoint for api-key usage>`;
-const key = '0x1cb7af425ea1c5c6cd9ab3290423881218fab4af3c2160abbaaf537ffac90ca2';
+const userRand = '0x1cb7af425ea1c5c6cd9ab3290423881218fab4af3c2160abbaaf537ffac90ca2';
 
-const genActionSource = (url: string) => {
+const genActionSource = () => {
     return litActionCode
 }
 
@@ -121,7 +120,7 @@ export const litMain = async () => {
     const { ciphertext, dataToEncryptHash } = await encryptString(
         {
             accessControlConditions,
-            dataToEncrypt: key,
+            dataToEncrypt: userRand,
         },
         client
     );
@@ -141,14 +140,14 @@ export const litMain = async () => {
         }
     ]
     );
-    console.log("action source code: ", genActionSource(url))
+    console.log("action source code: ", genActionSource())
     /*
     Here we use the encrypted key by sending the
     ciphertext and dataTiEncryptHash to the action
     */ 
     const res = await client.executeJs({
         sessionSigs: sessionForDecryption,
-        code: genActionSource(url),
+        code: genActionSource(),
         jsParams: {
             pAccessControlConditions: accessControlConditions,
             pUserRandCt: ciphertext,
