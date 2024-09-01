@@ -5,31 +5,13 @@ import { LitNetwork, LIT_RPC } from "@lit-protocol/constants";
 import { LitAbility, LitAccessControlConditionResource, LitActionResource, createSiweMessageWithRecaps, generateAuthSig } from "@lit-protocol/auth-helpers";
 import {ethers} from 'ethers';
 
+import { litActionCode } from './litAction';
+
 const url = `<your http endpoint for api-key usage>`;
 const key = '<your api key>';
 
 const genActionSource = (url: string) => {
-    return `(async () => {
-        const GENESIS_RANDOMNESS = ethers.utils.arrayify('0xae47223deec5323cc26aadeda4723d387f723031b8f539ec7dfdeb6653a10b72');
-        const skSeedBytes = await crypto.subtle.digest('SHA-256', GENESIS_RANDOMNESS);
-        const serializable = Array.from(new Uint8Array(skSeedBytes));
-
-        const apiKey = await Lit.Actions.decryptAndCombine({
-            accessControlConditions,
-            ciphertext,
-            dataToEncryptHash,
-            authSig: null,
-            chain: 'ethereum',
-        });
-
-
-        const myResponse = {
-            apiKey,
-            serializable,
-        };
-
-        Lit.Actions.setResponse({ response: JSON.stringify(myResponse) });
-    })();`;
+    return litActionCode
 }
 
 const ONE_WEEK_FROM_NOW = new Date(
@@ -166,9 +148,9 @@ export const litMain = async () => {
         sessionSigs: sessionForDecryption,
         code: genActionSource(url),
         jsParams: {
-            accessControlConditions,
-            ciphertext,
-            dataToEncryptHash
+            pAccessControlConditions: accessControlConditions,
+            pUserRandCt: ciphertext,
+            pUserRandHash: dataToEncryptHash,
         }
     });
 
