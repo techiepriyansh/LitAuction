@@ -10,6 +10,10 @@ const key = '<your api key>';
 
 const genActionSource = (url: string) => {
     return `(async () => {
+        const GENESIS_RANDOMNESS = ethers.utils.arrayify('0xae47223deec5323cc26aadeda4723d387f723031b8f539ec7dfdeb6653a10b72');
+        const skSeedBytes = await crypto.subtle.digest('SHA-256', GENESIS_RANDOMNESS);
+        const serializable = Array.from(new Uint8Array(skSeedBytes));
+
         const apiKey = await Lit.Actions.decryptAndCombine({
             accessControlConditions,
             ciphertext,
@@ -17,14 +21,14 @@ const genActionSource = (url: string) => {
             authSig: null,
             chain: 'ethereum',
         });
-        // Note: uncomment this functionality to use your api key that is for the provided url
-        /*
-        const resp = await fetch("${url}", {
-            'Authorization': "Bearer " + apiKey
-        });
-        let data = await resp.json();
-        */
-        Lit.Actions.setResponse({ response: apiKey });
+
+
+        const myResponse = {
+            apiKey,
+            serializable,
+        };
+
+        Lit.Actions.setResponse({ response: JSON.stringify(myResponse) });
     })();`;
 }
 
