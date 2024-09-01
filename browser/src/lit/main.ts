@@ -8,7 +8,7 @@ import {ethers} from 'ethers';
 import { litActionCode } from './litAction';
 
 const url = `<your http endpoint for api-key usage>`;
-const key = '<your api key>';
+const key = '0x1cb7af425ea1c5c6cd9ab3290423881218fab4af3c2160abbaaf537ffac90ca2';
 
 const genActionSource = (url: string) => {
     return litActionCode
@@ -155,6 +155,7 @@ export const litMain = async () => {
     });
 
     console.log("result from action execution:", res);
+    console.log("response from action:", JSON.parse(res.response));
     client.disconnect();
 }
 
