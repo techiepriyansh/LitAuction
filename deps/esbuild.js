@@ -4,7 +4,7 @@ const go = async () => {
   let result = await build({
     entryPoints: ["./toBundle.js"],
     bundle: true,
-    minify: false,
+    minify: true,
     sourcemap: false,
     outfile: "./bundled.js",
     sourceRoot: "./",
