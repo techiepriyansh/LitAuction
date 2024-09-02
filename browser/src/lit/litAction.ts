@@ -1,7 +1,5 @@
 // @ts-nocheck
 
-import { Simulate } from "react-dom/test-utils";
-
 const _litActionCode = async () => {
     // TODO: change this to secure randomness, with only this action being able to decrypt it
     const GENESIS_RANDOMNESS = {
@@ -11,6 +9,7 @@ const _litActionCode = async () => {
     const CHAIN = 'sepolia';
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
+    const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
@@ -50,7 +49,17 @@ const _litActionCode = async () => {
             pRequestType: "query",
             pOpts: { env: "testnet" },
             pMethod: "queryAttestationList",
-            pArgs: [{ schemaId: "SPS_ZaILJN8vMvRpaaif1TEbZ", page: 1 }],
+            pArgs: [{ schemaId: METADATA_SCHEMA_ID, page: 1 }],
+        },
+    });
+
+    const spQueryAttRes = await Lit.Actions.call({
+        ipfsId: SIGN_SDK_BUNDLE_ACTION,
+        params: {
+            pRequestType: "query",
+            pOpts: { env: "testnet" },
+            pMethod: "queryAttestation",
+            pArgs: [pAuctionId],
         },
     });
 
@@ -79,6 +88,7 @@ const _litActionCode = async () => {
         auxWalletAddress: auxWallet.address,
         auxWalletBal,
         spQueryRes: JSON.parse(spQueryRes),
+        spQueryAttRes: JSON.parse(spQueryAttRes),
         spSignRes: JSON.parse(spSignRes),
     };
 

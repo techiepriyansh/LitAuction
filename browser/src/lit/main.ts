@@ -152,6 +152,7 @@ export const litMain = async () => {
             pAccessControlConditions: accessControlConditions,
             pUserRandCt: ciphertext,
             pUserRandHash: dataToEncryptHash,
+            pAuctionId: "SPA_Hp3v2mIrqmc4DKHB8tGU8",
         }
     });
 
