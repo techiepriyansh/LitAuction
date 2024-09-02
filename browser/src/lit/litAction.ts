@@ -54,23 +54,26 @@ const _litActionCode = async () => {
         },
     });
 
-    const spSignRes = await Lit.Actions.call({
-        ipfsId: SIGN_SDK_BUNDLE_ACTION,
-        params: {
-            pRequestType: "write",
-            pOpts: { privateKey: genesisPrivateKeyHex },
-            pMethod: "createAttestation",
-            pArgs: [{
-                schemaId: STATE_SCHEMA_ID,
-                data: {
-                    state: JSON.stringify({
-                        curWinner: 1, prevRoundWinner: 2,
-                    }),
-                },
-                indexingValue: "initial-test-1",
-            }],
-        }
-    });
+    const spSignRes = await Lit.Actions.runOnce(
+        { waitForResponse: true, name: "SignProtocol_createAttestation" },
+        async () => await Lit.Actions.call({
+            ipfsId: SIGN_SDK_BUNDLE_ACTION,
+            params: {
+                pRequestType: "write",
+                pOpts: { privateKey: genesisPrivateKeyHex },
+                pMethod: "createAttestation",
+                pArgs: [{
+                    schemaId: STATE_SCHEMA_ID,
+                    data: {
+                        state: JSON.stringify({
+                            curWinner: 2, prevRoundWinner: 3,
+                        }),
+                    },
+                    indexingValue: "initial-test-2",
+                }],
+            }
+        }),
+    )
 
     const retVal = {
         auxWalletAddress: auxWallet.address,
