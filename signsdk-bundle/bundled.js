@@ -39408,7 +39408,7 @@ zurdo`.split("\n");
     if (pRequestType == "query") {
       const indexService = new IndexService(pOpts.env);
       const res = await indexService[pMethod](...pArgs);
-      Lit.Action.setResponse({
+      Lit.Actions.setResponse({
         response: JSON.stringify(res)
       });
     } else if (pRequestType == "write") {
@@ -39418,7 +39418,7 @@ zurdo`.split("\n");
         rpcUrl: pOpts.env == "mainnet" ? OffChainRpc.mainnet : OffChainRpc.testnet
       });
       const res = await client[pMethod](...pArgs);
-      Lit.Action.setResponse({
+      Lit.Actions.setResponse({
         response: JSON.stringify(res)
       });
     }
