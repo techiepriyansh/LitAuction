@@ -6,8 +6,8 @@ const _litActionCode = async () => {
         ct: "sBjWTjkYfaqS5q+JDeIwQP64LJeY/gwuOw2oYEPZxtGH0YWSa/77C/9x+FRSOSMXFoPpu7cPqW0dHU22557YsUp7dbR4B/hl94rhxiaD07JD3M1K6XaUFPe+xPJ8wjzW4UTKwGeLh/SaNppU41sZvmEBOSmbcEDfeFtMXnRAr2FE8/huA/Y5vb2ZtRZA/LTpfUSr7AI=",
         hash: "3900f4496392e04aca614ed7e63d5081574ac203543fa7259b67c5d765b9f977",
     }
-
     const CHAIN = 'sepolia';
+    const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
@@ -36,9 +36,20 @@ const _litActionCode = async () => {
 
     const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
 
+    const spQueryRes = await Lit.Actions.call({
+        ipfsId: SIGN_SDK_BUNDLE_ACTION,
+        params: {
+            pRequestType: "query",
+            pOpts: { env: "testnet" },
+            pMethod: "querySchemaList",
+            pArgs: [{ page: 1 }],
+        },
+    });
+
     const retVal = {
         auxWalletAddress: auxWallet.address,
         auxWalletBal,
+        spQueryRes,
     };
 
     Lit.Actions.setResponse({ response: JSON.stringify(retVal) });
