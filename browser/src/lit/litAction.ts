@@ -1,13 +1,16 @@
 // @ts-nocheck
 
+import { Simulate } from "react-dom/test-utils";
+
 const _litActionCode = async () => {
     // TODO: change this to secure randomness, with only this action being able to decrypt it
     const GENESIS_RANDOMNESS = {
-        ct: "sBjWTjkYfaqS5q+JDeIwQP64LJeY/gwuOw2oYEPZxtGH0YWSa/77C/9x+FRSOSMXFoPpu7cPqW0dHU22557YsUp7dbR4B/hl94rhxiaD07JD3M1K6XaUFPe+xPJ8wjzW4UTKwGeLh/SaNppU41sZvmEBOSmbcEDfeFtMXnRAr2FE8/huA/Y5vb2ZtRZA/LTpfUSr7AI=",
-        hash: "3900f4496392e04aca614ed7e63d5081574ac203543fa7259b67c5d765b9f977",
+        ct: "pN/z54XEeVvHgXdsYTTGx8gGox79AjZ5rvlhhHxcGGkKRuPrMrVUoRs1c1jVJgRrJH/DSti6U7stkJWeMO/dFXwhTEVuoYh92xUyLGn5I2CEAbX1UdN361fQT5FL9JS/ITVZ966oHZpExwHUyhTZQtJ+/NGNvMJ5NVasuUvDXx64uYNVgIwoS5JY0KjPatK5eOCg7E6mSBPfLjnhdeZtTukT9mzA7ihj6ux9BNVYdES5+nXS9jRKAdySNW1SQ1Yj98imTcs+6u20sCYfavg61mK0rQ5zQAI=",
+        hash: "1904a24ef594d66c2eed310444174ad1d739830a594237061654104159792d0d",
     }
     const CHAIN = 'sepolia';
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
+    const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
@@ -26,10 +29,15 @@ const _litActionCode = async () => {
     });
 
     const genesisRandBytes = ethers.utils.arrayify(genesisRandPt);
-    const userRandBytes = ethers.utils.arrayify(userRandPt).slice(0, 32);
     
-    const combinedRandBytes = ethers.utils.keccak256(ethers.utils.concat([userRandBytes, genesisRandBytes]));
-    const auxWallet = new ethers.Wallet(combinedRandBytes); 
+    const genesisPrivateKey = genesisRandBytes.slice(0, 32);
+    const genesisPrivateKeyHex = ethers.utils.hexlify(genesisPrivateKey);
+    const genesisWallet = new ethers.Wallet(genesisPrivateKey);
+
+    const genesisAuxContribution = genesisRandBytes.slice(32, 64);
+    const userAuxContribution = ethers.utils.arrayify(userRandPt).slice(0, 32);
+    const auxPrivateKey = ethers.utils.keccak256(ethers.utils.concat([userAuxContribution, genesisAuxContribution]));
+    const auxWallet = new ethers.Wallet(auxPrivateKey);
 
     const rpcUrl = await Lit.Actions.getRpcUrl({ chain: CHAIN });
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
@@ -41,15 +49,34 @@ const _litActionCode = async () => {
         params: {
             pRequestType: "query",
             pOpts: { env: "testnet" },
-            pMethod: "querySchemaList",
-            pArgs: [{ page: 1 }],
+            pMethod: "queryAttestationList",
+            pArgs: [{ schemaId: "SPS_ZaILJN8vMvRpaaif1TEbZ", page: 1 }],
         },
+    });
+
+    const spSignRes = await Lit.Actions.call({
+        ipfsId: SIGN_SDK_BUNDLE_ACTION,
+        params: {
+            pRequestType: "write",
+            pOpts: { privateKey: genesisPrivateKeyHex },
+            pMethod: "createAttestation",
+            pArgs: [{
+                schemaId: STATE_SCHEMA_ID,
+                data: {
+                    state: JSON.stringify({
+                        curWinner: 1, prevRoundWinner: 2,
+                    }),
+                },
+                indexingValue: "initial-test-1",
+            }],
+        }
     });
 
     const retVal = {
         auxWalletAddress: auxWallet.address,
         auxWalletBal,
-        spQueryRes,
+        spQueryRes: JSON.parse(spQueryRes),
+        spSignRes: JSON.parse(spSignRes),
     };
 
     Lit.Actions.setResponse({ response: JSON.stringify(retVal) });
