@@ -10,6 +10,7 @@ const _litActionCode = async () => {
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
     const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
+    const INDEXING_VALUE_PREFIX = 'initial-test';
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
@@ -41,55 +42,82 @@ const _litActionCode = async () => {
     const rpcUrl = await Lit.Actions.getRpcUrl({ chain: CHAIN });
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
 
-    const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
-
-    const spQueryRes = await Lit.Actions.call({
-        ipfsId: SIGN_SDK_BUNDLE_ACTION,
-        params: {
-            pRequestType: "query",
-            pOpts: { env: "testnet" },
-            pMethod: "queryAttestationList",
-            pArgs: [{ schemaId: METADATA_SCHEMA_ID, page: 1 }],
-        },
-    });
-
-    const spQueryAttRes = await Lit.Actions.call({
-        ipfsId: SIGN_SDK_BUNDLE_ACTION,
-        params: {
-            pRequestType: "query",
-            pOpts: { env: "testnet" },
-            pMethod: "queryAttestation",
-            pArgs: [pAuctionId],
-        },
-    });
-
-    const spSignRes = await Lit.Actions.runOnce(
-        { waitForResponse: true, name: "SignProtocol_createAttestation" },
-        async () => await Lit.Actions.call({
+    const getMetadata = async () => {
+        const resStr = await Lit.Actions.call({
             ipfsId: SIGN_SDK_BUNDLE_ACTION,
             params: {
-                pRequestType: "write",
-                pOpts: { privateKey: genesisPrivateKeyHex },
-                pMethod: "createAttestation",
+                pRequestType: "query",
+                pOpts: { env: "testnet" },
+                pMethod: "queryAttestation",
+                pArgs: [pAuctionId],
+            },
+        });
+
+        const res = JSON.parse(resStr);
+        return JSON.parse(JSON.parse(res.data).metadata);
+    }
+
+    const getState = async () => {
+        const resStr = await Lit.Actions.call({
+            ipfsId: SIGN_SDK_BUNDLE_ACTION,
+            params: {
+                pRequestType: "query",
+                pOpts: { env: "testnet" },
+                pMethod: "queryAttestationList",
                 pArgs: [{
                     schemaId: STATE_SCHEMA_ID,
-                    data: {
-                        state: JSON.stringify({
-                            curWinner: 2, prevRoundWinner: 3,
-                        }),
-                    },
-                    indexingValue: "initial-test-2",
+                    indexingValue: `${INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+                    attester: genesisWallet.address,
+                    page: 1,
                 }],
-            }
-        }),
-    )
+            },
+        });
+
+        const res = JSON.parse(resStr);
+        if (res.rows.length > 0) {
+            return JSON.parse(JSON.parse(res.rows[0].data).state);
+        } else {
+            return null;
+        }
+    }
+
+    const setState = async (state) => {
+        await Lit.Actions.runOnce(
+            { waitForResponse: true, name: "SignProtocol_createAttestation" },
+            async () => await Lit.Actions.call({
+                ipfsId: SIGN_SDK_BUNDLE_ACTION,
+                params: {
+                    pRequestType: "write",
+                    pOpts: { privateKey: genesisPrivateKeyHex },
+                    pMethod: "createAttestation",
+                    pArgs: [{
+                        schemaId: STATE_SCHEMA_ID,
+                        data: {
+                            state: JSON.stringify(state),
+                        },
+                        indexingValue: `${INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+                    }],
+                }
+            }),
+        );
+    }
+
+    const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
+
+    let state = await getState();
+    if (state === null) {
+        state = {
+            salt: null,
+        }
+    }
+
+    state.salt = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+    await setState(state);
 
     const retVal = {
         auxWalletAddress: auxWallet.address,
         auxWalletBal,
-        spQueryRes: JSON.parse(spQueryRes),
-        spQueryAttRes: JSON.parse(spQueryAttRes),
-        spSignRes: JSON.parse(spSignRes),
+        metadata: await getMetadata(),
     };
 
     Lit.Actions.setResponse({ response: JSON.stringify(retVal) });
