@@ -153,7 +153,7 @@ export const litMain = async () => {
             pUserRandCt: ciphertext,
             pUserRandHash: dataToEncryptHash,
             pAuctionId: "SPA_Hp3v2mIrqmc4DKHB8tGU8",
-            pAction: "userMakeBid",
+            pAction: "hostStartAuction",
         }
     });
 

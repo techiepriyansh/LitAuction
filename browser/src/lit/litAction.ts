@@ -199,6 +199,20 @@ const _litActionCode = async () => {
         }
     }
 
+    const checkNFTOwnership = async (nftContractAddress, nftTokenId, walletAddress) => {
+        const abi = [
+            "function balanceOf(address account, uint256 id) view returns (uint256)"
+        ];
+
+        try {
+            const nftContract = new ethers.Contract(nftContractAddress, abi, provider);
+            const balance = await nftContract.balanceOf(walletAddress, nftTokenId);
+            return balance.gt(0);
+        } catch (error) {
+            return false;
+        }
+    }
+
     const litReturn = async (retStatus, retVal = null) => {
         let response = { retStatus, retVal };
         await Lit.Actions.setResponse({ response: JSON.stringify(response) });
@@ -213,6 +227,13 @@ const _litActionCode = async () => {
     }
 
     switch (pAction) {
+        case "hostStartAuction": {
+            const nftContractAddress = "0x423c6Dd00cdeB6ba1BBC4D9c3d50747e7daEB3Ce";
+            const nftTokenId = "0x1";
+            const walletAddress = "0x596ea2A4A47852b591322cd83800D5489657d43c";
+            const didCommitNft = await checkNFTOwnership(nftContractAddress, nftTokenId, walletAddress);
+            return litReturn("success", { didCommitNft });
+        }
         case "userMakeBid": {
             if (!pubState.started || pubState.ended) {
                 return litReturn("eAuctionNotInProgress"); 
