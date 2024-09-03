@@ -14,6 +14,12 @@ function App() {
         <button onClick={async () => await litMain("userMakeBid")}>
           Bid
         </button>
+        <button onClick={async () => await litMain("settlementTransferNft")}>
+          Settle NFT
+        </button>
+        <button onClick={async () => await litMain("settlementTransferBid")}>
+          Settle Bid
+        </button>
         <button onClick={async () => await signMain()}>
           Host
         </button>

@@ -10,12 +10,16 @@ const _litActionCode = async () => {
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
     const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
-    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-5';
-    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-5';
+    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-7';
+    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-7';
 
     const DEFAULT_PUB_STATE = {
         started: false,
         ended: false,
+        settlement: {
+            nftTransfered: false,
+            bidTransfered: false,
+        }
     }
 
     const DEFAULT_PRIV_STATE = {
@@ -215,7 +219,7 @@ const _litActionCode = async () => {
         }
     }
 
-    const checkNFTOwnership = async (nftContractAddress, nftTokenId, walletAddress) => {
+    const checkERC1155NFTOwnership = async (nftContractAddress, nftTokenId, walletAddress) => {
         const abi = [
             "function balanceOf(address account, uint256 id) view returns (uint256)"
         ];
@@ -229,6 +233,72 @@ const _litActionCode = async () => {
         }
     }
 
+    const transferERC1155NFT = async (ownerPrivateKey, receiverAddress, nftContractAddress, nftTokenId, amount = 1) => {
+        return await Lit.Actions.runOnce(
+            { waitForResponse: true, name: "transferERC1155NFT" },
+            async () => {
+                const ownerWallet = new ethers.Wallet(ownerPrivateKey, provider);
+                const nftContract = new ethers.Contract(
+                    nftContractAddress,
+                    [
+                        "function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data) external"
+                    ],
+                    ownerWallet
+                );
+        
+                try {
+                    const tx = await nftContract.safeTransferFrom(
+                        ownerWallet.address,
+                        receiverAddress,
+                        nftTokenId,
+                        amount,
+                        "0x"
+                    );
+            
+                    const receipt = await tx.wait();
+                    return receipt.transactionHash;
+                } catch (error) {
+                    return null;
+                }
+            },
+        );
+    }
+
+    const transferMaxBalance = async (fromPrivateKey, toAddress) => {
+        return await Lit.Actions.runOnce(
+            { waitForResponse: true, name: "transferERC1155NFT" },
+            async () => {
+                const wallet = new ethers.Wallet(fromPrivateKey, provider);
+                const balance = await wallet.getBalance();
+            
+                const gasPrice = await provider.getGasPrice();
+                const tx = {
+                    to: toAddress,
+                    gasPrice: gasPrice
+                };
+            
+                const gasLimit = await provider.estimateGas({ ...tx, from: wallet.address });
+                const estimatedGasCost = gasPrice.mul(gasLimit);
+                if (estimatedGasCost.gt(balance)) {
+                    return null;
+                }
+
+                const amountToSend = balance.sub(estimatedGasCost);
+            
+                tx.value = amountToSend;
+                tx.gasLimit = gasLimit;
+            
+                try {
+                    const txResponse = await wallet.sendTransaction(tx);
+                    await txResponse.wait();
+                    return txResponse.hash;
+                } catch (error) {
+                    return null;
+                }
+            },
+        );
+    }
+
     const litReturn = async (retStatus, retVal = null) => {
         let response = { retStatus, retVal };
         await Lit.Actions.setResponse({ response: JSON.stringify(response) });
@@ -236,7 +306,25 @@ const _litActionCode = async () => {
 
     let pubState = await getPublicState();
 
+    const tick = async () => {
+        if (!pubState.started || pubState.ended) {
+            return;
+        }
+
+        const metadata = await getMetadata();
+        const { endTimestamp } = metadata;
+        if (Date.now() > endTimestamp) {
+            pubState.ended = true;
+            await setPublicState(pubState);
+        }
+    }
+
+    await tick();
+
     switch (pAction) {
+        case "tick": {
+            return litReturn("success");
+        }
         case "genAuxWallet": {
             const auxWallet = await genAuxWallet();
             return litReturn("success", { auxWalletAddress: auxWallet.address });
@@ -250,7 +338,7 @@ const _litActionCode = async () => {
 
             const metadata = await getMetadata();
             const { nftContractAddress, nftTokenId } = metadata;
-            const didCommitNft = await checkNFTOwnership(nftContractAddress, nftTokenId, auxWallet.address);
+            const didCommitNft = await checkERC1155NFTOwnership(nftContractAddress, nftTokenId, auxWallet.address);
 
             if (didCommitNft) {
                 privState = await getPrivateState();
@@ -295,8 +383,50 @@ const _litActionCode = async () => {
 
             return litReturn("success", retVal);
         }
+        case "settlementTransferNft": {
+            if (!pubState.ended) {
+                return litReturn("eAuctionNotEnded");
+            }
+            if (pubState.settlement.nftTransfered) {
+                return litReturn("eNftAlreadyTransferred");
+            }
+
+            const metadata = await getMetadata();
+            const { nftContractAddress, nftTokenId } = metadata;
+
+            const privState = await getPrivateState();
+            const nftOwnerPrivateKey = privState.nftAccountPrivateKey;
+
+            const txHash = await transferERC1155NFT(nftOwnerPrivateKey, pClaimerAddress, nftContractAddress, nftTokenId);
+            if (txHash) {
+                pubState.settlement.nftTransfered = true;
+                await setPublicState(pubState);
+                return litReturn("success", { txHash });
+            } else {
+                return litReturn("eNftTransferFailed");
+            }
+        }
+        case "settlementTransferBid": {
+            if (!pubState.ended) {
+                return litReturn("eAuctionNotEnded");
+            }
+            if (pubState.settlement.bidTransfered) {
+                return litReturn("eBidAlreadyTransferred");
+            }
+
+            const privState = await getPrivateState();
+
+            const txHash = await transferMaxBalance(privState.bidAccountPrivateKey, pClaimerAddress);
+            if (txHash) {
+                pubState.settlement.bidTransfered = true;
+                await setPublicState(pubState);
+                return litReturn("success", { txHash });
+            } else {
+                return litReturn("eBidTransferFailed");
+            }
+        }
         default: {
-            litReturn("eInvalidAction");
+            return litReturn("eInvalidAction");
         }
     }
 }

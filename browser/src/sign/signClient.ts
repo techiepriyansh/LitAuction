@@ -25,7 +25,7 @@ export const signMain = async () => {
         data: {
             metadata: JSON.stringify({
                 name: "Eve's Auction",
-                endTimestamp: 1735669800000,
+                endTimestamp: 1725392731000,
                 nftContractAddress: "0x423c6Dd00cdeB6ba1BBC4D9c3d50747e7daEB3Ce",
                 nftTokenId: "0x1",
             }),

@@ -152,8 +152,9 @@ export const litMain = async (pAction) => {
             pAccessControlConditions: accessControlConditions,
             pUserRandCt: ciphertext,
             pUserRandHash: dataToEncryptHash,
-            pAuctionId: "SPA_75x0EkoFAK4kmzwWAprzw",
+            pAuctionId: "SPA_-HtNQytoTY6uVUnf4tkAS",
             pAction,
+            pClaimerAddress: wallet.address,
         }
     });
 
