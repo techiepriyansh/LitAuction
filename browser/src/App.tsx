@@ -1,5 +1,4 @@
-import { connectToLit } from "./connect";
-import { litMain } from "./lit/main";
+import { litMain } from "./lit/client";
 
 function App() {
 
