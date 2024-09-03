@@ -230,69 +230,80 @@ const _litActionCode = async () => {
     }
 
     const transferERC1155NFT = async (ownerPrivateKey, receiverAddress, nftContractAddress, nftTokenId, amount = 1) => {
-        return await Lit.Actions.runOnce(
+        const resStr = await Lit.Actions.runOnce(
             { waitForResponse: true, name: "transferERC1155NFT" },
             async () => {
-                const ownerWallet = new ethers.Wallet(ownerPrivateKey, provider);
-                const nftContract = new ethers.Contract(
-                    nftContractAddress,
-                    [
-                        "function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data) external"
-                    ],
-                    ownerWallet
-                );
-        
-                try {
-                    const tx = await nftContract.safeTransferFrom(
-                        ownerWallet.address,
-                        receiverAddress,
-                        nftTokenId,
-                        amount,
-                        "0x"
+                const fn = async () => {
+                    const ownerWallet = new ethers.Wallet(ownerPrivateKey, provider);
+                    const nftContract = new ethers.Contract(
+                        nftContractAddress,
+                        [
+                            "function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data) external"
+                        ],
+                        ownerWallet
                     );
             
-                    const receipt = await tx.wait();
-                    return receipt.transactionHash;
-                } catch (error) {
-                    return null;
-                }
+                    try {
+                        const tx = await nftContract.safeTransferFrom(
+                            ownerWallet.address,
+                            receiverAddress,
+                            nftTokenId,
+                            amount,
+                            "0x"
+                        );
+                
+                        const receipt = await tx.wait();
+                        return JSON.stringify(receipt.transactionHash);
+                    } catch (error) {
+                        return JSON.stringify(null);
+                    }
+                };
+
+                return JSON.stringify({
+                    txHash: await fn(),
+                });
             },
         );
+
+        return JSON.parse(resStr);
     }
 
     const transferMaxBalance = async (fromPrivateKey, toAddress) => {
-        return await Lit.Actions.runOnce(
+        const resStr = await Lit.Actions.runOnce(
             { waitForResponse: true, name: "transferERC1155NFT" },
             async () => {
-                const wallet = new ethers.Wallet(fromPrivateKey, provider);
-                const balance = await wallet.getBalance();
-            
-                const gasPrice = await provider.getGasPrice();
-                const tx = {
-                    to: toAddress,
-                    gasPrice: gasPrice
+                const fn = async () => {
+                    const wallet = new ethers.Wallet(fromPrivateKey, provider);
+                    const balance = await wallet.getBalance();
+                
+                    const gasPrice = await provider.getGasPrice();
+                    const tx = {
+                        to: toAddress,
+                        gasPrice: gasPrice
+                    };
+                    
+                    try {
+                        const gasLimit = await provider.estimateGas({ ...tx, from: wallet.address });
+                        const estimatedGasCost = gasPrice.mul(gasLimit);
+                        const amountToSend = balance.sub(estimatedGasCost);
+                    
+                        tx.value = amountToSend;
+                        tx.gasLimit = gasLimit;
+                        const txResponse = await wallet.sendTransaction(tx);
+                        await txResponse.wait();
+                        return txResponse.hash;
+                    } catch (error) {
+                        return null;
+                    }
                 };
-            
-                const gasLimit = await provider.estimateGas({ ...tx, from: wallet.address });
-                const estimatedGasCost = gasPrice.mul(gasLimit);
-                if (estimatedGasCost.gt(balance)) {
-                    return null;
-                }
 
-                const amountToSend = balance.sub(estimatedGasCost);
-            
-                tx.value = amountToSend;
-                tx.gasLimit = gasLimit;
-            
-                try {
-                    const txResponse = await wallet.sendTransaction(tx);
-                    await txResponse.wait();
-                    return txResponse.hash;
-                } catch (error) {
-                    return null;
-                }
+                return JSON.stringify({
+                    txHash: await fn(),
+                })
             },
         );
+
+        return JSON.parse(resStr);
     }
 
     const litReturn = async (retStatus, retVal = null) => {
@@ -384,13 +395,18 @@ const _litActionCode = async () => {
                 return litReturn("eAuctionNotEnded");
             }
 
+            const auxWallet = await genAuxWallet();
+            const privState = await getPrivateState();
+            if (auxWallet.address !== privState.highestBidder) {
+                return litReturn("eNotAuctionWinner");
+            }
+
             const metadata = await getMetadata();
             const { nftContractAddress, nftTokenId } = metadata;
 
-            const privState = await getPrivateState();
             const nftOwnerPrivateKey = privState.nftAccountPrivateKey;
 
-            const txHash = await transferERC1155NFT(nftOwnerPrivateKey, pClaimerAddress, nftContractAddress, nftTokenId);
+            const { txHash } = await transferERC1155NFT(nftOwnerPrivateKey, pClaimerAddress, nftContractAddress, nftTokenId);
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
@@ -402,9 +418,13 @@ const _litActionCode = async () => {
                 return litReturn("eAuctionNotEnded");
             }
 
+            const auxWallet = await genAuxWallet();
             const privState = await getPrivateState();
+            if (auxWallet.privateKey !== privState.nftAccountPrivateKey) {
+                return litReturn("eNotAuctionHost");
+            }
 
-            const txHash = await transferMaxBalance(privState.bidAccountPrivateKey, pClaimerAddress);
+            const { txHash } = await transferMaxBalance(privState.bidAccountPrivateKey, pClaimerAddress);
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
