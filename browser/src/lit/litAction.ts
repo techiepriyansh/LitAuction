@@ -199,32 +199,57 @@ const _litActionCode = async () => {
         }
     }
 
-    let privState = await getPrivateState();
-    if (privState === null) {
-        privState = {
-            highestBidder: "",
-            highestBid: "0x0",
+    const litReturn = async (retStatus, retVal = null) => {
+        let response = { retStatus, retVal };
+        await Lit.Actions.setResponse({ response: JSON.stringify(response) });
+    }
+
+    let pubState = await getPublicState();
+    if (pubState === null) {
+        pubState = {
+            started: false,
+            ended: false,
         }
     }
 
-    const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
-    if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(privState.highestBid))) {
-        privState.highestBidder = auxWallet.address;
-        privState.highestBid = auxWalletBal;
+    switch (pAction) {
+        case "userMakeBid": {
+            if (!pubState.started || pubState.ended) {
+                return litReturn("eAuctionNotInProgress"); 
+            }
+
+            let privState = await getPrivateState();
+            if (privState === null) {
+                privState = {
+                    highestBidder: "",
+                    highestBid: "0x0",
+                }
+            }
+        
+            const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
+            if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(privState.highestBid))) {
+                privState.highestBidder = auxWallet.address;
+                privState.highestBid = auxWalletBal;
+            }
+        
+            await setPrivateState(privState);
+        
+            const retVal = {
+                auxWalletAddress: auxWallet.address,
+                auxWalletBal,
+                metadata: await getMetadata(),
+                winningBidder: privState.highestBidder,
+                winningBid: privState.highestBid,
+                isUserWinning: privState.highestBidder === auxWallet.address,
+            };
+
+            return litReturn("success", retVal);
+        }
+        
+        default: {
+            litReturn("eInvalidAction");
+        }
     }
-
-    await setPrivateState(privState);
-
-    const retVal = {
-        auxWalletAddress: auxWallet.address,
-        auxWalletBal,
-        metadata: await getMetadata(),
-        winningBidder: privState.highestBidder,
-        winningBid: privState.highestBid,
-        isUserWinning: privState.highestBidder === auxWallet.address,
-    };
-
-    Lit.Actions.setResponse({ response: JSON.stringify(retVal) });
 }
 
 export const litActionCode = `(${_litActionCode.toString()})();`;
