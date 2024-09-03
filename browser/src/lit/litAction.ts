@@ -10,8 +10,20 @@ const _litActionCode = async () => {
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
     const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
-    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-1';
-    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-1';
+    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-2';
+    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-';
+
+    const DEFAULT_PUB_STATE = {
+        started: false,
+        ended: false,
+    }
+
+    const DEFAULT_PRIV_STATE = {
+        highestBidder: "",
+        highestBid: "0x0",
+        bidAccountPrivateKey: "",
+        nftAccountPrivateKey: "",
+    }
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
@@ -80,7 +92,7 @@ const _litActionCode = async () => {
         if (res.rows.length > 0) {
             return JSON.parse(JSON.parse(res.rows[0].data).state);
         } else {
-            return null;
+            return DEFAULT_PUB_STATE;
         }
     }
 
@@ -195,7 +207,7 @@ const _litActionCode = async () => {
             const stateJson = ethers.utils.toUtf8String(decryptedBytes);
             return JSON.parse(stateJson);
         } else {
-            return null;
+            return DEFAULT_PRIV_STATE;
         }
     }
 
@@ -219,12 +231,6 @@ const _litActionCode = async () => {
     }
 
     let pubState = await getPublicState();
-    if (pubState === null) {
-        pubState = {
-            started: false,
-            ended: false,
-        }
-    }
 
     switch (pAction) {
         case "genAuxWallet": {
@@ -240,6 +246,10 @@ const _litActionCode = async () => {
             const didCommitNft = await checkNFTOwnership(nftContractAddress, nftTokenId, auxWallet.address);
 
             if (didCommitNft) {
+                privState = await getPrivateState();
+                privState.nftAccountPrivateKey = auxPrivateKey;
+                await setPrivateState(privState);
+
                 pubState.started = true;
                 await setPublicState(pubState);
             }
@@ -252,17 +262,12 @@ const _litActionCode = async () => {
             }
 
             let privState = await getPrivateState();
-            if (privState === null) {
-                privState = {
-                    highestBidder: "",
-                    highestBid: "0x0",
-                }
-            }
         
             const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
             if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(privState.highestBid))) {
                 privState.highestBidder = auxWallet.address;
                 privState.highestBid = auxWalletBal;
+                privState.bidAccountPrivateKey = auxPrivateKey;
             }
         
             await setPrivateState(privState);
@@ -274,6 +279,8 @@ const _litActionCode = async () => {
                 winningBidder: privState.highestBidder,
                 winningBid: privState.highestBid,
                 isUserWinning: privState.highestBidder === auxWallet.address,
+                bidAccountPrivateKey: privState.bidAccountPrivateKey,
+                nftAccountPrivateKey: privState.nftAccountPrivateKey,
             };
 
             return litReturn("success", retVal);
