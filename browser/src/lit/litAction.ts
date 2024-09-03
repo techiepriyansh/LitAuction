@@ -10,8 +10,8 @@ const _litActionCode = async () => {
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
     const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
-    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-2';
-    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-';
+    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-5';
+    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-5';
 
     const DEFAULT_PUB_STATE = {
         started: false,
@@ -33,14 +33,6 @@ const _litActionCode = async () => {
         chain: CHAIN,
     });
 
-    const userRandPt = await Lit.Actions.decryptAndCombine({
-        accessControlConditions: pAccessControlConditions,
-        ciphertext: pUserRandCt,
-        dataToEncryptHash: pUserRandHash,
-        authSig: null,
-        chain: CHAIN,
-    });
-
     const genesisRandBytes = ethers.utils.arrayify(genesisRandPt);
     
     const genesisPrivateKey = genesisRandBytes.slice(0, 32);
@@ -48,14 +40,26 @@ const _litActionCode = async () => {
     const genesisWallet = new ethers.Wallet(genesisPrivateKey);
 
     const genesisEncryptionKey = genesisRandBytes.slice(32, 48);
-
     const genesisAuxContribution = genesisRandBytes.slice(48, 80);
-    const userAuxContribution = ethers.utils.arrayify(userRandPt).slice(0, 32);
-    const auxPrivateKey = ethers.utils.keccak256(ethers.utils.concat([userAuxContribution, genesisAuxContribution]));
-    const auxWallet = new ethers.Wallet(auxPrivateKey);
-
+    
     const rpcUrl = await Lit.Actions.getRpcUrl({ chain: CHAIN });
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+
+    const genAuxWallet = async () => {
+        const userRandPt = await Lit.Actions.decryptAndCombine({
+            accessControlConditions: pAccessControlConditions,
+            ciphertext: pUserRandCt,
+            dataToEncryptHash: pUserRandHash,
+            authSig: null,
+            chain: CHAIN,
+        });
+
+        const userAuxContribution = ethers.utils.arrayify(userRandPt).slice(0, 32);
+        const auxPrivateKey = ethers.utils.keccak256(ethers.utils.concat([userAuxContribution, genesisAuxContribution]));
+        const auxWallet = new ethers.Wallet(auxPrivateKey);
+
+        return auxWallet;
+    }
 
     const getMetadata = async () => {
         const resStr = await Lit.Actions.call({
@@ -234,9 +238,12 @@ const _litActionCode = async () => {
 
     switch (pAction) {
         case "genAuxWallet": {
+            const auxWallet = await genAuxWallet();
             return litReturn("success", { auxWalletAddress: auxWallet.address });
         }
         case "hostStartAuction": {
+            const auxWallet = await genAuxWallet();
+
             if (pubState.started) {
                 return litReturn("eAuctionAlreadyStarted");
             }
@@ -247,7 +254,7 @@ const _litActionCode = async () => {
 
             if (didCommitNft) {
                 privState = await getPrivateState();
-                privState.nftAccountPrivateKey = auxPrivateKey;
+                privState.nftAccountPrivateKey = auxWallet.privateKey;
                 await setPrivateState(privState);
 
                 pubState.started = true;
@@ -257,6 +264,8 @@ const _litActionCode = async () => {
             return litReturn("success", { didCommitNft });
         }
         case "userMakeBid": {
+            const auxWallet = await genAuxWallet();
+
             if (!pubState.started || pubState.ended) {
                 return litReturn("eAuctionNotInProgress"); 
             }
@@ -267,7 +276,7 @@ const _litActionCode = async () => {
             if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(privState.highestBid))) {
                 privState.highestBidder = auxWallet.address;
                 privState.highestBid = auxWalletBal;
-                privState.bidAccountPrivateKey = auxPrivateKey;
+                privState.bidAccountPrivateKey = auxWallet.privateKey;
             }
         
             await setPrivateState(privState);
@@ -281,11 +290,11 @@ const _litActionCode = async () => {
                 isUserWinning: privState.highestBidder === auxWallet.address,
                 bidAccountPrivateKey: privState.bidAccountPrivateKey,
                 nftAccountPrivateKey: privState.nftAccountPrivateKey,
+                ts: Date.now(),
             };
 
             return litReturn("success", retVal);
         }
-        
         default: {
             litReturn("eInvalidAction");
         }
