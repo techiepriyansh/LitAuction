@@ -16,10 +16,6 @@ const _litActionCode = async () => {
     const DEFAULT_PUB_STATE = {
         started: false,
         ended: false,
-        settlement: {
-            nftTransfered: false,
-            bidTransfered: false,
-        }
     }
 
     const DEFAULT_PRIV_STATE = {
@@ -387,9 +383,6 @@ const _litActionCode = async () => {
             if (!pubState.ended) {
                 return litReturn("eAuctionNotEnded");
             }
-            if (pubState.settlement.nftTransfered) {
-                return litReturn("eNftAlreadyTransferred");
-            }
 
             const metadata = await getMetadata();
             const { nftContractAddress, nftTokenId } = metadata;
@@ -399,8 +392,6 @@ const _litActionCode = async () => {
 
             const txHash = await transferERC1155NFT(nftOwnerPrivateKey, pClaimerAddress, nftContractAddress, nftTokenId);
             if (txHash) {
-                pubState.settlement.nftTransfered = true;
-                await setPublicState(pubState);
                 return litReturn("success", { txHash });
             } else {
                 return litReturn("eNftTransferFailed");
@@ -410,16 +401,11 @@ const _litActionCode = async () => {
             if (!pubState.ended) {
                 return litReturn("eAuctionNotEnded");
             }
-            if (pubState.settlement.bidTransfered) {
-                return litReturn("eBidAlreadyTransferred");
-            }
 
             const privState = await getPrivateState();
 
             const txHash = await transferMaxBalance(privState.bidAccountPrivateKey, pClaimerAddress);
             if (txHash) {
-                pubState.settlement.bidTransfered = true;
-                await setPublicState(pubState);
                 return litReturn("success", { txHash });
             } else {
                 return litReturn("eBidTransferFailed");
