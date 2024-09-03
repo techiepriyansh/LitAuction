@@ -10,7 +10,8 @@ const _litActionCode = async () => {
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
     const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
-    const INDEXING_VALUE_PREFIX = 'initial-test-4';
+    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-1';
+    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-1';
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
@@ -59,6 +60,51 @@ const _litActionCode = async () => {
         return JSON.parse(JSON.parse(res.data).metadata);
     }
 
+    const getPublicState = async () => {
+        const resStr = await Lit.Actions.call({
+            ipfsId: SIGN_SDK_BUNDLE_ACTION,
+            params: {
+                pRequestType: "query",
+                pOpts: { env: "testnet" },
+                pMethod: "queryAttestationList",
+                pArgs: [{
+                    schemaId: STATE_SCHEMA_ID,
+                    indexingValue: `${PUBLIC_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+                    attester: genesisWallet.address,
+                    page: 1,
+                }],
+            },
+        });
+
+        const res = JSON.parse(resStr);
+        if (res.rows.length > 0) {
+            return JSON.parse(JSON.parse(res.rows[0].data).state);
+        } else {
+            return null;
+        }
+    }
+
+    const setPublicState = async (state) => {
+        await Lit.Actions.runOnce(
+            { waitForResponse: true, name: "SignProtocol_createAttestation" },
+            async () => await Lit.Actions.call({
+                ipfsId: SIGN_SDK_BUNDLE_ACTION,
+                params: {
+                    pRequestType: "write",
+                    pOpts: { privateKey: genesisPrivateKeyHex },
+                    pMethod: "createAttestation",
+                    pArgs: [{
+                        schemaId: STATE_SCHEMA_ID,
+                        data: {
+                            state: JSON.stringify(state),
+                        },
+                        indexingValue: `${PUBLIC_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+                    }],
+                }
+            }),
+        );
+    }
+    
     const encryptData = async (data) => {
         const key = await crypto.subtle.importKey(
             'raw',
@@ -92,7 +138,7 @@ const _litActionCode = async () => {
         return new Uint8Array(decrypted);
     };
     
-    const setStateEncrypted = async (state) => {
+    const setPrivateState = async (state) => {
         await Lit.Actions.runOnce(
             { waitForResponse: true, name: "SignProtocol_createAttestation" },
             async () => {
@@ -112,7 +158,7 @@ const _litActionCode = async () => {
                             data: {
                                 state: encryptedState,
                             },
-                            indexingValue: `${INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+                            indexingValue: `${PRIVATE_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`,
                         }],
                     }
                 });
@@ -122,7 +168,7 @@ const _litActionCode = async () => {
         );
     }
     
-    const getStateEncrypted = async () => {
+    const getPrivateState = async () => {
         const resStr = await Lit.Actions.call({
             ipfsId: SIGN_SDK_BUNDLE_ACTION,
             params: {
@@ -131,7 +177,7 @@ const _litActionCode = async () => {
                 pMethod: "queryAttestationList",
                 pArgs: [{
                     schemaId: STATE_SCHEMA_ID,
-                    indexingValue: `${INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+                    indexingValue: `${PRIVATE_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`,
                     attester: genesisWallet.address,
                     page: 1,
                 }],
@@ -153,29 +199,29 @@ const _litActionCode = async () => {
         }
     }
 
-    let state = await getStateEncrypted();
-    if (state === null) {
-        state = {
+    let privState = await getPrivateState();
+    if (privState === null) {
+        privState = {
             highestBidder: "",
             highestBid: "0x0",
         }
     }
 
     const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
-    if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(state.highestBid))) {
-        state.highestBidder = auxWallet.address;
-        state.highestBid = auxWalletBal;
+    if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(privState.highestBid))) {
+        privState.highestBidder = auxWallet.address;
+        privState.highestBid = auxWalletBal;
     }
 
-    await setStateEncrypted(state);
+    await setPrivateState(privState);
 
     const retVal = {
         auxWalletAddress: auxWallet.address,
         auxWalletBal,
         metadata: await getMetadata(),
-        winningBidder: state.highestBidder,
-        winningBid: state.highestBid,
-        isUserWinning: state.highestBidder === auxWallet.address,
+        winningBidder: privState.highestBidder,
+        winningBid: privState.highestBid,
+        isUserWinning: privState.highestBidder === auxWallet.address,
     };
 
     Lit.Actions.setResponse({ response: JSON.stringify(retVal) });
