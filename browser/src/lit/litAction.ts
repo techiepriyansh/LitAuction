@@ -10,7 +10,7 @@ const _litActionCode = async () => {
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
     const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
-    const INDEXING_VALUE_PREFIX = 'initial-test-3';
+    const INDEXING_VALUE_PREFIX = 'initial-test-4';
 
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
@@ -43,8 +43,6 @@ const _litActionCode = async () => {
 
     const rpcUrl = await Lit.Actions.getRpcUrl({ chain: CHAIN });
     const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
-
-    const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
 
     const getMetadata = async () => {
         const resStr = await Lit.Actions.call({
@@ -158,18 +156,26 @@ const _litActionCode = async () => {
     let state = await getStateEncrypted();
     if (state === null) {
         state = {
-            round: 0,
+            highestBidder: "",
+            highestBid: "0x0",
         }
     }
 
-    state.round++;
+    const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
+    if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(state.highestBid))) {
+        state.highestBidder = auxWallet.address;
+        state.highestBid = auxWalletBal;
+    }
+
     await setStateEncrypted(state);
 
     const retVal = {
         auxWalletAddress: auxWallet.address,
         auxWalletBal,
         metadata: await getMetadata(),
-        round: state.round,
+        winningBidder: state.highestBidder,
+        winningBid: state.highestBid,
+        isUserWinning: state.highestBidder === auxWallet.address,
     };
 
     Lit.Actions.setResponse({ response: JSON.stringify(retVal) });
