@@ -87,7 +87,7 @@ const genSession = async (
     return sessionSigs;
 }
 
-export const litMain = async () => {
+export const litMain = async (pAction) => {
     let client = new LitNodeClient({
         litNetwork: LitNetwork.DatilDev,
         debug: true
@@ -152,8 +152,8 @@ export const litMain = async () => {
             pAccessControlConditions: accessControlConditions,
             pUserRandCt: ciphertext,
             pUserRandHash: dataToEncryptHash,
-            pAuctionId: "SPA_Hp3v2mIrqmc4DKHB8tGU8",
-            pAction: "hostStartAuction",
+            pAuctionId: "SPA_75x0EkoFAK4kmzwWAprzw",
+            pAction,
         }
     });
 

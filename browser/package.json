@@ -12,6 +12,7 @@
   "dependencies": {
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@ethsign/sp-sdk": "^0.7.2",
     "@lit-protocol/auth-helpers": "^6.4.10",
     "@lit-protocol/lit-node-client": "^6.2.2",
     "@lit-protocol/types": "^6.4.10",
