@@ -390,7 +390,7 @@ const _litActionCode = async () => {
 
             return litReturn("success", retVal);
         }
-        case "settlementTransferNft": {
+        case "settlementClaimNft": {
             if (!pubState.ended) {
                 return litReturn("eAuctionNotEnded");
             }
@@ -413,7 +413,7 @@ const _litActionCode = async () => {
                 return litReturn("eNftTransferFailed");
             }
         }
-        case "settlementTransferBid": {
+        case "settlementClaimBid": {
             if (!pubState.ended) {
                 return litReturn("eAuctionNotEnded");
             }
