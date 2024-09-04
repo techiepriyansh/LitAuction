@@ -10,12 +10,14 @@ const _litActionCode = async () => {
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
     const METADATA_SCHEMA_ID = 'SPS_cKmgkXVeojP-CdiH7kK7K';
-    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-7';
-    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-7';
+    const PRIVATE_STATE_INDEXING_VALUE_PREFIX = 'priv-initial-test-9';
+    const PUBLIC_STATE_INDEXING_VALUE_PREFIX = 'pub-initial-test-9';
 
     const DEFAULT_PUB_STATE = {
         started: false,
         ended: false,
+        curRound: 0,
+        curRoundStartTimestamp: 0,
     }
 
     const DEFAULT_PRIV_STATE = {
@@ -23,6 +25,7 @@ const _litActionCode = async () => {
         highestBid: "0x0",
         bidAccountPrivateKey: "",
         nftAccountPrivateKey: "",
+        prevRoundWinner: "",
     }
 
     const PROMISE_TIMEOUT = 2500;
@@ -327,11 +330,29 @@ const _litActionCode = async () => {
         if (!pubState.started || pubState.ended) {
             return;
         }
-
+        
         const metadata = await getMetadata();
-        const { endTimestamp } = metadata;
-        if (Date.now() > endTimestamp) {
+        const { roundMinDuration, endTimestamp } = metadata;
+
+        const curTimestamp = Date.now();
+        
+        const shouldUpdateRound = curTimestamp > pubState.curRoundStartTimestamp + roundMinDuration;
+        const shouldEndAuction = curTimestamp > endTimestamp;
+
+        if (shouldUpdateRound || shouldEndAuction) {
+            pubState.curRound++;
+            pubState.curRoundStartTimestamp = curTimestamp;
+
+            let privState = await getPrivateState();
+            privState.prevRoundWinner = privState.highestBidder;
+            await setPrivateState(privState);
+        }
+
+        if (shouldEndAuction) {
             pubState.ended = true;
+        }
+
+        if (shouldUpdateRound || shouldEndAuction) {
             await setPublicState(pubState);
         }
     }
@@ -363,10 +384,14 @@ const _litActionCode = async () => {
                 await setPrivateState(privState);
 
                 pubState.started = true;
+                pubState.curRound = 1;
+                pubState.curRoundStartTimestamp = Date.now();
                 await setPublicState(pubState);
+                
+                return litReturn("success", { startTimestamp: pubState.curRoundStartTimestamp });
             }
 
-            return litReturn("success", { didCommitNft });
+            return litReturn("eDidNotCommitNft");
         }
         case "userMakeBid": {
             const auxWallet = await genAuxWallet();
@@ -420,7 +445,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eNftTransferFailed", { auxWalletAddress: auxWallet.address });
+                return litReturn("eNftTransferFailed", { holderWalletAddress: ethers.Wallet(nftOwnerPrivateKey).address });
             }
         }
         case "settlementClaimBid": {
@@ -438,7 +463,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eBidTransferFailed", { auxWalletAddress: auxWallet.address });
+                return litReturn("eBidTransferFailed", { holderWalletAddress: ethers.Wallet(privState.bidAccountPrivateKey).address });
             }
         }
         case "settlementRevertLosingBid": {
@@ -456,7 +481,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eBidTransferFailed", { auxWalletAddress: auxWallet.address });
+                return litReturn("eBidTransferFailed", { holderWalletAddress: auxWallet.address });
             }
         }
         default: {
