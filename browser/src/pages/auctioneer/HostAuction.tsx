@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 function HostAuction() {
     const [auctionData, setAuctionData] = useState({
@@ -8,6 +8,19 @@ function HostAuction() {
         nftContractAddress: "",
         nftTokenId: "",
     });
+
+    const [logs, setLogs] = useState<string[]>([]);
+    const logsEndRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (logsEndRef.current) {
+            logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [logs]);
+
+    const addLog = (message: string) => {
+        setLogs(prevLogs => [...prevLogs, message]);
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -27,16 +40,15 @@ function HostAuction() {
             nftTokenId: auctionData.nftTokenId,
         };
         console.log(parsedData);
+        addLog(parsedData.name);
     };
-
-    const responseMessage = "";
 
     return (
         <div className="h-full w-full flex flex-col">
             <div className="h-24 w-full flex flex-col justify-center text-5xl pl-5">
                 Host Auction
             </div>
-            <div className="h-full w-full flex flex-row">
+            <div className="h-full w-full flex flex-row overflow-hidden">
                 <form
                     className="w-auto"
                     onSubmit={handleSubmit}
@@ -106,14 +118,17 @@ function HostAuction() {
                         </button>
                     </div>
                 </form>
-                <div className="w-full ml-10 p-10 bg-gray-100 border border-gray-300 flex flex-col">
+                <div className="h-full w-full ml-10 p-10 bg-gray-100 border border-gray-300 flex flex-col overflow-hidden">
                     <h2 className="text-2xl mb-4">Logs</h2>
-                    <div className="flex-1">
-                        {responseMessage ? (
-                            <p className="text-lg text-gray-700">{responseMessage}</p>
+                    <div className="flex-1 overflow-y-auto max-h-screen">
+                        {logs.length === 0 ? (
+                            <p className="text-lg text-gray-500">No logs to display.</p>
                         ) : (
-                            <p className="text-lg text-gray-500">No messages to display.</p>
+                            logs.map((log, index) => (
+                                <p key={index} className="text-lg text-gray-700 mb-2">{log}</p>
+                            ))
                         )}
+                        <div ref={logsEndRef} />
                     </div>
                 </div>
             </div>
