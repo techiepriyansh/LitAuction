@@ -25,6 +25,16 @@ const _litActionCode = async () => {
         nftAccountPrivateKey: "",
     }
 
+    const PROMISE_TIMEOUT = 2500;
+    const withTimeout = (promise) => {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Promise timed out')), PROMISE_TIMEOUT)
+            ),
+        ])
+    }
+
     const genesisRandPt = await Lit.Actions.decryptAndCombine({
         accessControlConditions: pAccessControlConditions,
         ciphertext: GENESIS_RANDOMNESS.ct,
@@ -252,10 +262,10 @@ const _litActionCode = async () => {
                             "0x"
                         );
                 
-                        const receipt = await tx.wait();
-                        return JSON.stringify(receipt.transactionHash);
+                        const receipt = await withTimeout(tx.wait());
+                        return receipt.transactionHash;
                     } catch (error) {
-                        return JSON.stringify(null);
+                        return null;
                     }
                 };
 
@@ -290,7 +300,7 @@ const _litActionCode = async () => {
                         tx.value = amountToSend;
                         tx.gasLimit = gasLimit;
                         const txResponse = await wallet.sendTransaction(tx);
-                        await txResponse.wait();
+                        await withTimeout(txResponse.wait());
                         return txResponse.hash;
                     } catch (error) {
                         return null;
@@ -425,6 +435,24 @@ const _litActionCode = async () => {
             }
 
             const { txHash } = await transferMaxBalance(privState.bidAccountPrivateKey, pClaimerAddress);
+            if (txHash) {
+                return litReturn("success", { txHash });
+            } else {
+                return litReturn("eBidTransferFailed");
+            }
+        }
+        case "settlementRevertLosingBid": {
+            if (!pubState.ended) {
+                return litReturn("eAuctionNotEnded");
+            }
+
+            const auxWallet = await genAuxWallet();
+            const privState = await getPrivateState();
+            if (auxWallet.address === privState.highestBidder) {
+                return litReturn("eNotLosingBidder");
+            }
+
+            const { txHash } = await transferMaxBalance(auxWallet.privateKey, pClaimerAddress);
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
