@@ -420,7 +420,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eNftTransferFailed");
+                return litReturn("eNftTransferFailed", { auxWalletAddress: auxWallet.address });
             }
         }
         case "settlementClaimBid": {
@@ -438,7 +438,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eBidTransferFailed");
+                return litReturn("eBidTransferFailed", { auxWalletAddress: auxWallet.address });
             }
         }
         case "settlementRevertLosingBid": {
@@ -456,7 +456,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eBidTransferFailed");
+                return litReturn("eBidTransferFailed", { auxWalletAddress: auxWallet.address });
             }
         }
         default: {

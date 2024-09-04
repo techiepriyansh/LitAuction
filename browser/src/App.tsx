@@ -20,6 +20,9 @@ function App() {
         <button onClick={async () => await litMain("settlementClaimBid")}>
           Settle Bid
         </button>
+        <button onClick={async () => await litMain("settlementRevertLosingBid")}>
+          Revert Bid
+        </button>
         <button onClick={async () => await signMain()}>
           Host
         </button>
