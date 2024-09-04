@@ -55,64 +55,64 @@ function HostAuction() {
                 >
                     <div className="w-full flex flex-col items-start space-y-4 py-4 pl-10">
                         <div className="flex flex-col">
-                            <label className="text-xl mb-2">Auction Name:</label>
+                            <label className="text-base mb-2">Auction Name:</label>
                             <input
                                 type="text"
                                 name="name"
                                 value={auctionData.name}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-72"
+                                className="border border-gray-300 rounded-md p-2 w-80"
                                 placeholder="Enter auction name"
                             />
                         </div>
                         <div className="flex flex-col">
-                            <label className="text-xl mb-2">End Date and Time:</label>
+                            <label className="text-base mb-2">End Date and Time:</label>
                             <input
                                 type="datetime-local"
                                 name="endTimestamp"
                                 value={auctionData.endTimestamp}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-72"
+                                className="border border-gray-300 rounded-md p-2 w-80"
                             />
                         </div>
                         <div className="flex flex-col">
-                            <label className="text-xl mb-2">Round Min Duration (seconds):</label>
+                            <label className="text-base mb-2">Min Round Duration (seconds):</label>
                             <input
                                 type="number"
                                 name="roundMinDuration"
                                 value={auctionData.roundMinDuration}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-72"
-                                placeholder="Enter round minimum duration"
+                                className="border border-gray-300 rounded-md p-2 w-80"
+                                placeholder="Enter minimum duration of one round"
                             />
                         </div>
                         <div className="flex flex-col">
-                            <label className="text-xl mb-2">NFT Contract Address:</label>
+                            <label className="text-base mb-2">NFT Contract Address:</label>
                             <input
                                 type="text"
                                 name="nftContractAddress"
                                 value={auctionData.nftContractAddress}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-72"
+                                className="border border-gray-300 rounded-md p-2 w-80"
                                 placeholder="Enter NFT contract address"
                             />
                         </div>
                         <div className="flex flex-col">
-                            <label className="text-xl mb-2">NFT Token ID:</label>
+                            <label className="text-base mb-2">NFT Token ID:</label>
                             <input
                                 type="text"
                                 name="nftTokenId"
                                 value={auctionData.nftTokenId}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-72"
+                                className="border border-gray-300 rounded-md p-2 w-80"
                                 placeholder="Enter NFT token ID"
                             />
                         </div>
                     </div>
-                    <div className="mt-4 pl-10">
+                    <div className="mt-2 pl-10">
                         <button
                             type="submit"
-                            className="w-72 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Create Auction
                         </button>
