@@ -84,7 +84,7 @@ function Bidder() {
                 const bidAmount = ethers.utils.formatEther(retVal.auxWalletBal);
                 consoleLog(`Bid successful. Bid amount: ${bidAmount} ETH`);
                 break;
-            
+
             }
             case "eAuctionNotInProgress": {
                 consoleLog("Auction is not in progress. Cannot make bid.");
@@ -158,7 +158,12 @@ function Bidder() {
         const { retStatus, retVal } = await litMain("settlementClaimNft", { auctionId: auctionData.auctionId, userRand: randBytesHex, claimerAddress: auctionData.claimAddress });
         switch (retStatus) {
             case "success": {
-                consoleLog(`NFT claimed successfully! NFT claim tx hash: ${retVal.txHash}`);
+                if (retVal.txHash === "") {
+                    consoleLog("NFT claim transaction broadcasted. It should be confirmed on the blockchain shortly.")
+                } else {
+                    consoleLog(`NFT claimed successfully! NFT claim tx hash: ${retVal.txHash}`);
+                }
+
                 break;
             }
             case "eAuctionNotEnded": {

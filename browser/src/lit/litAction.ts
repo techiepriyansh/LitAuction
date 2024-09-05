@@ -268,7 +268,11 @@ const _litActionCode = async () => {
                         const receipt = await withTimeout(tx.wait());
                         return receipt.transactionHash;
                     } catch (error) {
-                        return null;
+                        if (error.toString() == (new Error('Promise timed out')).toString()) {
+                            return "";
+                        } else {
+                            return null;
+                        }
                     }
                 };
 
@@ -449,7 +453,7 @@ const _litActionCode = async () => {
             const nftOwnerPrivateKey = privState.nftAccountPrivateKey;
 
             const { txHash } = await transferERC1155NFT(nftOwnerPrivateKey, pClaimerAddress, nftContractAddress, nftTokenId);
-            if (txHash) {
+            if (txHash != null) {
                 return litReturn("success", { txHash });
             } else {
                 return litReturn("eNftTransferFailed", { holderWalletAddress: (new ethers.Wallet(nftOwnerPrivateKey)).address });
