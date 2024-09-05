@@ -28,7 +28,7 @@ const _litActionCode = async () => {
         prevRoundWinner: "",
     }
 
-    const PROMISE_TIMEOUT = 2500;
+    const PROMISE_TIMEOUT = 20000;
     const withTimeout = (promise) => {
         return Promise.race([
             promise,
