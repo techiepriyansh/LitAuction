@@ -6,6 +6,8 @@ import {
     OffChainSignType,
 } from "@ethsign/sp-sdk";
 
+import { litMain } from "../lit/litClient";
+
 const METADATA_INDEXING_VALUE = "demo-test-1";
 const METADATA_SCHEMA_ID = "SPS_cKmgkXVeojP-CdiH7kK7K"
 
@@ -65,6 +67,8 @@ const formatDateTime = (timestamp: number) => {
 export const signGetAuctionInfo = async (auctionId: string, consoleLog: (message: string) => void) => {
     consoleLog(`Fetching auction info for auction ID: ${auctionId}`)
 
+    await litMain("tick", { auctionId });
+
     const client = new IndexService("testnet");
 
     const auctionInfo = await client.queryAttestation(auctionId);
@@ -74,8 +78,9 @@ export const signGetAuctionInfo = async (auctionId: string, consoleLog: (message
         const { name, endTimestamp, roundMinDuration, nftContractAddress, nftTokenId } = metadata;
         consoleLog(`Name: ${name}, End time: ${formatDateTime(endTimestamp)}, Minimum round duration: ${Math.round(roundMinDuration/1000)}s, NFT contract address: ${nftContractAddress}, NFT token ID: ${nftTokenId}`)
     } else {
-        return consoleLog("Coundn't fetch auction info");
+        return consoleLog("Coundn't fetch auction metadata");
     }
+
 
     const auctionState = await client.queryAttestationList({
         schemaId: STATE_SCHEMA_ID,
