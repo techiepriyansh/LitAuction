@@ -37,7 +37,7 @@ function HostAuction() {
         const parsedData = {
             name: auctionData.name,
             endTimestamp: new Date(auctionData.endTimestamp).getTime(),
-            roundMinDuration: parseInt(auctionData.roundMinDuration),
+            roundMinDuration: parseInt(auctionData.roundMinDuration) * 1000,
             nftContractAddress: auctionData.nftContractAddress,
             nftTokenId: auctionData.nftTokenId,
         };

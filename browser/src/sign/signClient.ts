@@ -6,7 +6,7 @@ import {
     OffChainSignType,
 } from "@ethsign/sp-sdk";
 
-const METADATA_INDEXING_VALUE = "ui-test-1";
+const METADATA_INDEXING_VALUE = "demo-test-1";
 const METADATA_SCHEMA_ID = "SPS_cKmgkXVeojP-CdiH7kK7K"
 
 const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
@@ -72,7 +72,7 @@ export const signGetAuctionInfo = async (auctionId: string, consoleLog: (message
         const resData = JSON.parse(auctionInfo.data);
         const metadata = JSON.parse(resData.metadata);
         const { name, endTimestamp, roundMinDuration, nftContractAddress, nftTokenId } = metadata;
-        consoleLog(`Name: ${name}, End time: ${formatDateTime(endTimestamp)}, Minimum round duration: ${roundMinDuration}s, NFT contract address: ${nftContractAddress}, NFT token ID: ${nftTokenId}`)
+        consoleLog(`Name: ${name}, End time: ${formatDateTime(endTimestamp)}, Minimum round duration: ${Math.round(roundMinDuration/1000)}s, NFT contract address: ${nftContractAddress}, NFT token ID: ${nftTokenId}`)
     } else {
         return consoleLog("Coundn't fetch auction info");
     }

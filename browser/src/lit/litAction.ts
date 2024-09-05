@@ -452,7 +452,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eNftTransferFailed", { holderWalletAddress: ethers.Wallet(nftOwnerPrivateKey).address });
+                return litReturn("eNftTransferFailed", { holderWalletAddress: (new ethers.Wallet(nftOwnerPrivateKey)).address });
             }
         }
         case "settlementClaimBid": {
@@ -470,7 +470,7 @@ const _litActionCode = async () => {
             if (txHash) {
                 return litReturn("success", { txHash });
             } else {
-                return litReturn("eBidTransferFailed", { holderWalletAddress: ethers.Wallet(privState.bidAccountPrivateKey).address });
+                return litReturn("eBidTransferFailed", { holderWalletAddress: (new ethers.Wallet(privState.bidAccountPrivateKey)).address });
             }
         }
         case "settlementRevertLosingBid": {
