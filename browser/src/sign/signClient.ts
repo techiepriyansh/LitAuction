@@ -36,8 +36,8 @@ export const signMain = async (auctionData: any, consoleLog: (message: string) =
         indexingValue: METADATA_INDEXING_VALUE,
     });
 
-    console.log(attestationInfo)
-    consoleLog(attestationInfo.attestationId)
+    consoleLog(`Your auction ID is: ${attestationInfo.attestationId}`);
+    consoleLog(`Head over to the Manage Auction page to start your auction!`);
 }
 
 const formatDateTime = (timestamp: number) => {
@@ -89,7 +89,7 @@ export const signGetAuctionInfo = async (auctionId: string, consoleLog: (message
         const { started, ended, curRound, curRoundStartTimestamp } = state;
         consoleLog(`Started: ${started}, Ended: ${ended}, Current round: ${curRound}, Current round start time: ${formatDateTime(curRoundStartTimestamp)}`)
     } else {
-        return consoleLog("Coundn't fetch auction state");
+        return consoleLog("Coundn't fetch auction state. It might not have started yet.");
     }
 
 }
