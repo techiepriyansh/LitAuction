@@ -80,7 +80,7 @@ function ManageAuction() {
         const { retStatus } = await litMain("hostStartAuction", { auctionId: auctionData.auctionId, userRand: computeRandBytesHex() });
         switch (retStatus) {
             case "success": {
-                consoleLog("Auction started successfully.");
+                consoleLog("Auction started successfully!");
                 break;
             }
             case "eAuctionAlreadyStarted": {
@@ -90,6 +90,29 @@ function ManageAuction() {
             case "eDidNotCommitNft": {
                 consoleLog("NFT not committed to auxiliary wallet. Please commit the NFT before starting the auction.");
                 break;
+            }
+        }
+    }
+
+    const claimBid = async () => {
+        consoleLog("Claiming bid...")
+        const { retStatus, retVal } = await litMain("settlementClaimBid", { auctionId: auctionData.auctionId, userRand: computeRandBytesHex(), claimerAddress: auctionData.bidClaimAddress });
+        switch (retStatus) {
+            case "success": {
+                consoleLog(`Bid claimed successfully! Claim tx hash: ${retVal.txHash}`);
+                break;
+            }
+            case "eAuctionNotEnded": {
+                consoleLog("Auction has not ended yet.");
+                break;
+            }
+            case "eNotAuctionHost": {
+                consoleLog("You are not the host of this auction.");
+                break;
+            }
+            case "eBidTransferFailed": {
+                consoleLog("Failed to transfer bid amount.");
+                consoleLog(`Ensure that there are enough funds in the auxiliary bid holder address: ${retVal.holderWalletAddress}`);
             }
         }
     }
@@ -177,6 +200,7 @@ function ManageAuction() {
                     </div>
                     <div className="pl-10">
                         <button
+                            onClick={claimBid}
                             className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Claim Bid
