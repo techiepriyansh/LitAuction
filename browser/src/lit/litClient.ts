@@ -21,10 +21,8 @@ const genProvider = () => {
     return new ethers.providers.JsonRpcProvider(LIT_RPC.CHRONICLE_YELLOWSTONE);
 }
 
-const genWallet = () => {
-// known private key for testing
-// replace with your own key
-return new ethers.Wallet(import.meta.env.VITE_TEST_WALLET_PRIVATE_KEY, genProvider());
+const genWallet = (privateKey) => {
+    return new ethers.Wallet(privateKey || ethers.utils.randomBytes(32), genProvider());
 }
 
 const genAuthSig = async (
@@ -91,7 +89,7 @@ export const litMain = async (pAction, pActionParams) => {
         debug: true
     });
 
-    const wallet = genWallet();
+    const wallet = genWallet(pActionParams.userRand);
     const chain = CHAIN;
     // lit action will allow anyone to decrypt this api key with a valid authSig
     const accessControlConditions = [
