@@ -75,11 +75,107 @@ function Bidder() {
         consoleLog(`To make bids, send funds to this address and click Make Bid. The balance of this address will be considered as your bid amount.`)
     }
 
-    const makeBid = async () => {}
+    const makeBid = async () => {
+        const randBytesHex = computeRandBytesHex();
+        consoleLog("Making bid...")
+        const { retStatus, retVal } = await litMain("userMakeBid", { auctionId: auctionData.auctionId, userRand: randBytesHex });
+        switch (retStatus) {
+            case "success": {
+                const bidAmount = ethers.utils.formatEther(retVal.auxWalletBal);
+                consoleLog(`Bid successful. Bid amount: ${bidAmount} ETH`);
+                break;
+            
+            }
+            case "eAuctionNotInProgress": {
+                consoleLog("Auction is not in progress. Cannot make bid.");
+                break;
+            }
+        }
+    }
 
-    const checkWin = async () => {}
+    const checkWin = async () => {
+        const randBytesHex = computeRandBytesHex();
+        consoleLog("Checking win...");
+        const { retStatus, retVal } = await litMain("userCheckWin", { auctionId: auctionData.auctionId, userRand: randBytesHex });
+        switch (retStatus) {
+            case "success": {
+                const { isWinner, ended, curRound } = retVal;
+                let lastRound = curRound - 1;
+                if (ended) {
+                    if (isWinner) {
+                        consoleLog("Congratulations! You are the auction winner!");
+                    } else {
+                        consoleLog("You are not the auction winner.");
+                    }
+                } else {
+                    if (lastRound === 0) {
+                        consoleLog("First round has not concluded yet. Cannot check win.");
+                    } else {
+                        if (isWinner) {
+                            consoleLog(`You were the round ${lastRound} winner!`);
+                        } else {
+                            consoleLog(`You did not win the round ${lastRound}.`)
+                        }
+                    }
+                }
+                break;
+            }
+            case "eAuctionNotStarted": {
+                consoleLog("Auction has not started yet. Cannot check win.");
+                break;
+            }
+        }
+    }
 
-    const claimNft = async () => {}
+    const refundBid = async () => {
+        const randBytesHex = computeRandBytesHex();
+        consoleLog("Refunding bid...");
+        const { retStatus, retVal } = await litMain("settlementRevertLosingBid", { auctionId: auctionData.auctionId, userRand: randBytesHex, claimerAddress: auctionData.claimAddress });
+        switch (retStatus) {
+            case "success": {
+                consoleLog(`Bid refunded successfully! Refund tx hash: ${retVal.txHash}`);
+                break;
+            }
+            case "eAuctionNotEnded": {
+                consoleLog("Auction not ended yet. Cannot refund bid.");
+                break;
+            }
+            case "eNotLosingBidder": {
+                consoleLog("You are the auction winner! Cannot refund bid.");
+                break;
+            }
+            case "eBidTransferFailed": {
+                consoleLog("Failed to refund bid amount");
+                consoleLog(`Ensure that there are enough funds in the auxiliary wallet address: ${retVal.holderWalletAddress}`);
+                break;
+            }
+        }
+    }
+
+    const claimNft = async () => {
+        const randBytesHex = computeRandBytesHex();
+        consoleLog("Claiming NFT...");
+        const { retStatus, retVal } = await litMain("settlementClaimNft", { auctionId: auctionData.auctionId, userRand: randBytesHex, claimerAddress: auctionData.claimAddress });
+        switch (retStatus) {
+            case "success": {
+                consoleLog(`NFT claimed successfully! NFT claim tx hash: ${retVal.txHash}`);
+                break;
+            }
+            case "eAuctionNotEnded": {
+                consoleLog("Auction has not ended yet. Cannot claim NFT.");
+                break;
+            }
+            case "eNotAuctionWinner": {
+                consoleLog("You are not the auction winner. Cannot claim NFT.");
+                break;
+            }
+            case "eNftTransferFailed": {
+                consoleLog("Failed to transfer NFT");
+                consoleLog(`Ensure that there are enough funds in the auxiliary NFT holder address: ${retVal.holderWalletAddress}`);
+                break;
+            }
+        }
+    }
 
     return (
         <div className="h-full w-full flex flex-col">
@@ -173,7 +269,7 @@ function Bidder() {
                     <div className="pl-10">
                         <div className="w-96 flex flex-row justify-between space-x-4">
                             <button
-                                onClick={claimNft}
+                                onClick={refundBid}
                                 className="flex-1 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                             >
                                 Refund Bid

@@ -103,7 +103,7 @@ function ManageAuction() {
                 break;
             }
             case "eAuctionNotEnded": {
-                consoleLog("Auction has not ended yet.");
+                consoleLog("Auction has not ended yet. Cannot claim bid.");
                 break;
             }
             case "eNotAuctionHost": {
@@ -113,6 +113,7 @@ function ManageAuction() {
             case "eBidTransferFailed": {
                 consoleLog("Failed to transfer bid amount.");
                 consoleLog(`Ensure that there are enough funds in the auxiliary bid holder address: ${retVal.holderWalletAddress}`);
+                break;
             }
         }
     }

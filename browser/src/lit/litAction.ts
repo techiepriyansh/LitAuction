@@ -412,18 +412,25 @@ const _litActionCode = async () => {
             await setPrivateState(privState);
         
             const retVal = {
-                auxWalletAddress: auxWallet.address,
                 auxWalletBal,
-                metadata: await getMetadata(),
-                winningBidder: privState.highestBidder,
-                winningBid: privState.highestBid,
-                isUserWinning: privState.highestBidder === auxWallet.address,
-                bidAccountPrivateKey: privState.bidAccountPrivateKey,
-                nftAccountPrivateKey: privState.nftAccountPrivateKey,
-                ts: Date.now(),
             };
 
             return litReturn("success", retVal);
+        }
+        case "userCheckWin": {
+            if (!pubState.started) {
+                return litReturn("eAuctionNotStarted");
+            }
+
+            const auxWallet = await genAuxWallet();
+            const privState = await getPrivateState();
+
+            const isWinner = auxWallet.address == privState.prevRoundWinner;
+            return litReturn("success", { 
+                isWinner,
+                ended: pubState.ended,
+                curRound: pubState.curRound,
+            });
         }
         case "settlementClaimNft": {
             if (!pubState.ended) {
