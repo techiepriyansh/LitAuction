@@ -37,6 +37,7 @@ export const signMain = async (auctionData: any, consoleLog: (message: string) =
     });
 
     consoleLog(`Your auction ID is: ${attestationInfo.attestationId}`);
+    consoleLog("Keep this ID safe, you will need it to manage your auction.")
     consoleLog(`Head over to the Manage Auction page to start your auction!`);
 }
 

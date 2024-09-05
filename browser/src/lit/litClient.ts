@@ -9,7 +9,7 @@ import { litActionCode } from './litAction';
 
 const CHAIN = 'sepolia';
 
-const userRand = '0x1cb7af425ea1c5c6cd9ab3290423881218fab4af3c2160abbaaf537ffac90ca2';
+// const userRand = '0x1cb7af425ea1c5c6cd9ab3290423881218fab4af3c2160abbaaf537ffac90ca2';
 
 const genActionSource = () => {
     return litActionCode
@@ -87,7 +87,7 @@ const genSession = async (
     return sessionSigs;
 }
 
-export const litMain = async (pAction) => {
+export const litMain = async (pAction, pActionParams) => {
     let client = new LitNodeClient({
         litNetwork: LitNetwork.DatilDev,
         debug: true
@@ -112,54 +112,75 @@ export const litMain = async (pAction) => {
     
 
     await client.connect();
-    /*
-    Here we are encypting our key for secure use within an action
-    this code should be run once and the ciphertext and dataToEncryptHash stored for later sending
-    to the Lit Action in 'jsParams'
-    */
-    const { ciphertext, dataToEncryptHash } = await encryptString(
-        {
-            accessControlConditions,
-            dataToEncrypt: userRand,
-        },
-        client
-    );
 
-    console.log("cipher text:", ciphertext, "hash:", dataToEncryptHash);
-    const accsResourceString = 
-        await LitAccessControlConditionResource.generateResourceString(accessControlConditions as any, dataToEncryptHash);
-    const sessionForDecryption = await genSession(wallet, client, [
+    const actionSourceCode = genActionSource();
+    console.log("action source code: ", actionSourceCode);
+
+    const doEncryptionSetup = async (userRand) => {
+        const { ciphertext, dataToEncryptHash } = await encryptString(
+            {
+                accessControlConditions,
+                dataToEncrypt: userRand,
+            },
+            client
+        );
+        console.log("cipher text:", ciphertext, "hash:", dataToEncryptHash);
+
+        const accsResourceString = 
+            await LitAccessControlConditionResource.generateResourceString(accessControlConditions as any, dataToEncryptHash);
+        const sessionForDecryption = await genSession(wallet, client, [
+            {
+                resource: new LitActionResource('*'),
+                ability: LitAbility.LitActionExecution,
+            },
+            {
+                resource: new LitAccessControlConditionResource(accsResourceString),
+                ability: LitAbility.AccessControlConditionDecryption,
+    
+            }
+        ]
+        );
+
+        return { ciphertext, dataToEncryptHash, sessionForDecryption };
+    }
+
+    let sessionSigs = await genSession(wallet, client, [
         {
             resource: new LitActionResource('*'),
             ability: LitAbility.LitActionExecution,
         },
-        {
-            resource: new LitAccessControlConditionResource(accsResourceString),
-            ability: LitAbility.AccessControlConditionDecryption,
-
-        }
     ]
     );
-    console.log("action source code: ", genActionSource())
-    /*
-    Here we use the encrypted key by sending the
-    ciphertext and dataTiEncryptHash to the action
-    */ 
-    const res = await client.executeJs({
-        sessionSigs: sessionForDecryption,
-        code: genActionSource(),
-        jsParams: {
-            pAccessControlConditions: accessControlConditions,
-            pUserRandCt: ciphertext,
-            pUserRandHash: dataToEncryptHash,
-            pAuctionId: "SPA_R8pNFvXN5HelN9zxpwCC2",
-            pAction,
-            pClaimerAddress: wallet.address,
+
+    let jsParams = {
+        pAccessControlConditions: accessControlConditions,
+        pAction,
+        pAuctionId: pActionParams.auctionId,
+    };
+
+    if (pActionParams.userRand) {
+        const { ciphertext, dataToEncryptHash, sessionForDecryption } = await doEncryptionSetup(pActionParams.userRand);
+        
+        sessionSigs = sessionForDecryption;
+        
+        jsParams.pUserRandCt = ciphertext;
+        jsParams.pUserRandHash = dataToEncryptHash;
+    
+        if (pActionParams.claimerAddress) {
+            jsParams.pClaimerAddress = pActionParams.claimerAddress;
         }
+    }
+
+    const res = await client.executeJs({
+        sessionSigs,
+        code: actionSourceCode,
+        jsParams,
     });
 
     console.log("result from action execution:", res);
     console.log("response from action:", JSON.parse(res.response));
     client.disconnect();
+
+    return JSON.parse(res.response);
 }
 

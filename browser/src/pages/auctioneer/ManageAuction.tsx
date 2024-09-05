@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ethers } from 'ethers';
 
+import { litMain } from "../../lit/litClient";
 import { signGetAuctionInfo } from "../../sign/signClient";
 
 function ManageAuction() {
@@ -31,13 +33,41 @@ function ManageAuction() {
         }));
     };
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+    };
+
     const getAuctionInfo = async () => {
         await signGetAuctionInfo(auctionData.auctionId, consoleLog);
     }
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-    };
+    const generateRandomness = () => {
+        const generateRandomString = (length: number): string => {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+            let result = '';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                const randomIndex = Math.floor(Math.random() * charactersLength);
+                result += characters[randomIndex];
+            }
+            return result;
+        };
+        setAuctionData(prevState => ({
+            ...prevState,
+            userRandomness: generateRandomString(40),
+        }));
+        consoleLog("Randomness generated. Keep it somewhere safe. You will need it for all subsequent actions including bid claim.")
+    }
+
+    const getAuxWalletAddress = async () => {
+        const randBytes = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.userRandomness));
+        const randBytesHex = ethers.utils.hexlify(randBytes);
+
+        consoleLog("Generating auxiliary wallet address...")
+        const { retVal } = await litMain("genAuxWallet", { auctionId: auctionData.auctionId, userRand: randBytesHex });
+        consoleLog(`Auxiliary wallet address: ${retVal.auxWalletAddress}`)
+        consoleLog(`You will need to commit your NFT to this address before starting the auction.`)
+    }
 
     return (
         <div className="h-full w-full flex flex-col">
@@ -57,7 +87,7 @@ function ManageAuction() {
                                 name="auctionId"
                                 value={auctionData.auctionId}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-80"
+                                className="border border-gray-300 rounded-md p-2 w-96"
                                 placeholder="Enter auction ID"
                             />
                         </div>
@@ -65,7 +95,7 @@ function ManageAuction() {
                     <div className="pl-10">
                         <button
                             onClick={getAuctionInfo}
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Get Auction Info
                         </button>
@@ -78,21 +108,30 @@ function ManageAuction() {
                                 name="userRandomness"
                                 value={auctionData.userRandomness}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-80"
-                                placeholder="Enter user randomness"
+                                className="border border-gray-300 rounded-md p-2 w-96"
+                                placeholder="Enter any random text"
                             />
                         </div>
                     </div>
                     <div className="pl-10">
                         <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            onClick={generateRandomness}
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
-                            Generate Aux Wallet
+                            Generate Randomness
                         </button>
                     </div>
                     <div className="mt-4 pl-10">
                         <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            onClick={getAuxWalletAddress}
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                        >
+                            Get Aux Wallet Address
+                        </button>
+                    </div>
+                    <div className="mt-4 pl-10">
+                        <button
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Start Auction
                         </button>
@@ -105,14 +144,14 @@ function ManageAuction() {
                                 name="bidClaimAddress"
                                 value={auctionData.bidClaimAddress}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-80"
+                                className="border border-gray-300 rounded-md p-2 w-96"
                                 placeholder="Enter address to receive the winning bid"
                             />
                         </div>
                     </div>
                     <div className="pl-10">
                         <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Claim Bid
                         </button>
