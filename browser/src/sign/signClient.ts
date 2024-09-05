@@ -40,7 +40,30 @@ export const signMain = async (auctionData: any, consoleLog: (message: string) =
     consoleLog(attestationInfo.attestationId)
 }
 
+const formatDateTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+
+    const optionsDate: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    };
+
+    const optionsTime: Intl.DateTimeFormatOptions = {
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+
+    const formattedDate = date.toLocaleDateString(undefined, optionsDate);
+    const formattedTime = date.toLocaleTimeString(undefined, optionsTime);
+
+    return `${formattedDate}, ${formattedTime}`;
+};
+
+
 export const signGetAuctionInfo = async (auctionId: string, consoleLog: (message: string) => void) => {
+    consoleLog(`Fetching auction info for auction ID: ${auctionId}`)
+
     const client = new IndexService("testnet");
 
     const auctionInfo = await client.queryAttestation(auctionId);
@@ -48,7 +71,7 @@ export const signGetAuctionInfo = async (auctionId: string, consoleLog: (message
         const resData = JSON.parse(auctionInfo.data);
         const metadata = JSON.parse(resData.metadata);
         const { name, endTimestamp, roundMinDuration, nftContractAddress, nftTokenId } = metadata;
-        consoleLog(`Name: ${name}, End time: ${new Date(endTimestamp)}, Minimum round duration: ${roundMinDuration}s, NFT contract address: ${nftContractAddress}, NFT token ID: ${nftTokenId}`)
+        consoleLog(`Name: ${name}, End time: ${formatDateTime(endTimestamp)}, Minimum round duration: ${roundMinDuration}s, NFT contract address: ${nftContractAddress}, NFT token ID: ${nftTokenId}`)
     } else {
         return consoleLog("Coundn't fetch auction info");
     }
@@ -64,7 +87,7 @@ export const signGetAuctionInfo = async (auctionId: string, consoleLog: (message
         const resData = JSON.parse(auctionState.rows[0].data);
         const state = JSON.parse(resData.state);
         const { started, ended, curRound, curRoundStartTimestamp } = state;
-        consoleLog(`Started: ${started}, Ended: ${ended}, Current round: ${curRound}, Current round start time: ${new Date(curRoundStartTimestamp)}`)
+        consoleLog(`Started: ${started}, Ended: ${ended}, Current round: ${curRound}, Current round start time: ${formatDateTime(curRoundStartTimestamp)}`)
     } else {
         return consoleLog("Coundn't fetch auction state");
     }

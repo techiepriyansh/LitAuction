@@ -19,7 +19,8 @@ function ManageAuction() {
     }, [logs]);
 
     const consoleLog = (message: string) => {
-        setLogs(prevLogs => [...prevLogs, message]);
+        const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLogs(prevLogs => [...prevLogs, `[${currentTime}] ${message}`]);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,7 +125,7 @@ function ManageAuction() {
                             <p className="text-lg text-gray-500">No logs to display.</p>
                         ) : (
                             logs.map((log, index) => (
-                                <p key={index} className="text-lg text-gray-700 mb-2">{log}</p>
+                                <p key={index} className="text-base text-gray-700 mb-2 font-mono">{log}</p>
                             ))
                         )}
                         <div ref={logsEndRef} />
