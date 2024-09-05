@@ -1,4 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { ethers } from 'ethers';
+
+import { litMain } from "../lit/litClient";
+import { signGetAuctionInfo } from "../sign/signClient";
 
 function Bidder() {
     const [auctionData, setAuctionData] = useState({
@@ -16,8 +20,9 @@ function Bidder() {
         }
     }, [logs]);
 
-    const addLog = (message: string) => {
-        setLogs(prevLogs => [...prevLogs, message]);
+    const consoleLog = (message: string) => {
+        const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setLogs(prevLogs => [...prevLogs, `[${currentTime}] ${message}`]);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,15 +33,53 @@ function Bidder() {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const parsedData = {
-            auctionId: auctionData.auctionId,
-            userRandomness: auctionData.userRandomness,
-        };
-        console.log(parsedData);
-        addLog(`Auction ID: ${parsedData.auctionId}`);
     };
+
+    const getAuctionInfo = async () => {
+        await signGetAuctionInfo(auctionData.auctionId, consoleLog);
+    }
+
+    const generateRandomness = () => {
+        const generateRandomString = (length: number): string => {
+            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+            let result = '';
+            const charactersLength = characters.length;
+            for (let i = 0; i < length; i++) {
+                const randomIndex = Math.floor(Math.random() * charactersLength);
+                result += characters[randomIndex];
+            }
+            return result;
+        };
+        setAuctionData(prevState => ({
+            ...prevState,
+            userRandomness: generateRandomString(40),
+        }));
+        consoleLog("Randomness generated. Keep it somewhere safe. You will need it for all subsequent actions including claiming the NFT (if you win) or refunding the bid amount (if you lose).")
+    }
+
+    const computeRandBytesHex = (): string => {
+        const userRandHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.userRandomness));
+        const auctionIdHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.auctionId));
+        const randBytes = ethers.utils.keccak256(ethers.utils.concat([userRandHash, auctionIdHash]));
+        const randBytesHex = ethers.utils.hexlify(userRandHash); // TODO: replace with randBytes
+        return randBytesHex;
+    }
+
+    const getAuxWalletAddress = async () => {
+        const randBytesHex = computeRandBytesHex();
+        consoleLog("Generating auxiliary wallet address...")
+        const { retVal } = await litMain("genAuxWallet", { auctionId: auctionData.auctionId, userRand: randBytesHex });
+        consoleLog(`Auxiliary wallet address: ${retVal.auxWalletAddress}`)
+        consoleLog(`To make bids, send funds to this address and click Make Bid. The balance of this address will be considered as your bid amount.`)
+    }
+
+    const makeBid = async () => {}
+
+    const checkWin = async () => {}
+
+    const claimNft = async () => {}
 
     return (
         <div className="h-full w-full flex flex-col">
@@ -45,8 +88,8 @@ function Bidder() {
             </div>
             <div className="h-full w-full flex flex-row overflow-hidden">
                 <form
-                    className="w-auto"
                     onSubmit={handleSubmit}
+                    className="w-auto"
                 >
                     <div className="w-full flex flex-col items-start space-y-4 py-4 pl-10">
                         <div className="flex flex-col">
@@ -56,14 +99,15 @@ function Bidder() {
                                 name="auctionId"
                                 value={auctionData.auctionId}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-80"
+                                className="border border-gray-300 rounded-md p-2 w-96"
                                 placeholder="Enter auction ID"
                             />
                         </div>
                     </div>
                     <div className="pl-10">
                         <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            onClick={getAuctionInfo}
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Get Auction Info
                         </button>
@@ -76,58 +120,71 @@ function Bidder() {
                                 name="userRandomness"
                                 value={auctionData.userRandomness}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-80"
-                                placeholder="Enter user randomness"
+                                className="border border-gray-300 rounded-md p-2 w-96"
+                                placeholder="Enter any random text"
                             />
                         </div>
                     </div>
                     <div className="pl-10">
                         <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            onClick={generateRandomness}
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
-                            Generate Aux Wallet
+                            Generate Randomness
                         </button>
                     </div>
                     <div className="mt-4 pl-10">
                         <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            onClick={getAuxWalletAddress}
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                        >
+                            Get Aux Wallet Address
+                        </button>
+                    </div>
+                    <div className="mt-4 pl-10">
+                        <button
+                            onClick={makeBid}
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Make Bid
                         </button>
                     </div>
                     <div className="mt-4 pl-10">
                         <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            onClick={checkWin}
+                            className="w-96 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Check Win
                         </button>
                     </div>
                     <div className="w-full flex flex-col items-start py-4 pl-10">
                         <div className="flex flex-col">
-                            <label className="text-base mb-2">Claim Address:</label>
+                            <label className="text-base mb-2">Refund/Claim Address:</label>
                             <input
                                 type="text"
                                 name="claimAddress"
                                 value={auctionData.claimAddress}
                                 onChange={handleChange}
-                                className="border border-gray-300 rounded-md p-2 w-80"
-                                placeholder="Enter address to receive the winning bid"
+                                className="border border-gray-300 rounded-md p-2 w-96"
+                                placeholder="Enter address to receive refund or claim NFT"
                             />
                         </div>
                     </div>
                     <div className="pl-10">
-                        <button
-                            className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
-                        >
-                            Winner Claim NFT
-                        </button>
-                    </div>
-                    <div className="pl-10">
-                        <button
-                            className="mt-4 w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
-                        >
-                            Loser Revert Bid
-                        </button>
+                        <div className="w-96 flex flex-row justify-between space-x-4">
+                            <button
+                                onClick={claimNft}
+                                className="flex-1 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            >
+                                Refund Bid
+                            </button>
+                            <button
+                                onClick={claimNft}
+                                className="flex-1 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
+                            >
+                                Claim NFT
+                            </button>
+                        </div>
                     </div>
                 </form>
                 <div className="h-full w-full ml-10 p-10 bg-gray-100 border border-gray-300 flex flex-col overflow-hidden">
@@ -137,7 +194,7 @@ function Bidder() {
                             <p className="text-lg text-gray-500">No logs to display.</p>
                         ) : (
                             logs.map((log, index) => (
-                                <p key={index} className="text-lg text-gray-700 mb-2">{log}</p>
+                                <p key={index} className="text-base text-gray-700 mb-2 font-mono">{log}</p>
                             ))
                         )}
                         <div ref={logsEndRef} />
