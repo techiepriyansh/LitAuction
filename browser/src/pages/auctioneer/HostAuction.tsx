@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { signMain } from "../../sign/signClient";
 
 function HostAuction() {
     const [auctionData, setAuctionData] = useState({
@@ -18,7 +19,7 @@ function HostAuction() {
         }
     }, [logs]);
 
-    const addLog = (message: string) => {
+    const consoleLog = (message: string) => {
         setLogs(prevLogs => [...prevLogs, message]);
     };
 
@@ -30,7 +31,7 @@ function HostAuction() {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const parsedData = {
             name: auctionData.name,
@@ -39,8 +40,7 @@ function HostAuction() {
             nftContractAddress: auctionData.nftContractAddress,
             nftTokenId: auctionData.nftTokenId,
         };
-        console.log(parsedData);
-        addLog(parsedData.name);
+        await signMain(parsedData, consoleLog);
     };
 
     return (

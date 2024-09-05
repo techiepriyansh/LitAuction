@@ -5,7 +5,7 @@ import {
     OffChainSignType,
 } from "@ethsign/sp-sdk";
 
-const METADATA_INDEXING_VALUE = "initial-test-2";
+const METADATA_INDEXING_VALUE = "ui-test-1";
 const METADATA_SCHEMA_ID = "SPS_cKmgkXVeojP-CdiH7kK7K"
 
 declare global {
@@ -14,7 +14,7 @@ declare global {
     }
 }
 
-export const signMain = async () => {
+export const signMain = async (auctionData: any, consoleLog: (message: string) => void) => {
     await window.ethereum.request({ method: 'eth_requestAccounts' });
 
     const client = new SignProtocolClient(SpMode.OffChain, {
@@ -25,16 +25,11 @@ export const signMain = async () => {
     const attestationInfo = await client.createAttestation({
         schemaId: METADATA_SCHEMA_ID,
         data: {
-            metadata: JSON.stringify({
-                name: "Eve's Auction 2",
-                endTimestamp: 1725540554000,
-                roundMinDuration: 300,
-                nftContractAddress: "0x423c6Dd00cdeB6ba1BBC4D9c3d50747e7daEB3Ce",
-                nftTokenId: "0x1",
-            }),
+            metadata: JSON.stringify(auctionData),
         },
         indexingValue: METADATA_INDEXING_VALUE,
     });
 
-    console.log(attestationInfo);
+    console.log(attestationInfo)
+    consoleLog(attestationInfo.attestationId)
 }

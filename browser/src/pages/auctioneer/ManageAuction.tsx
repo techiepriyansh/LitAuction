@@ -46,7 +46,6 @@ function ManageAuction() {
             <div className="h-full w-full flex flex-row overflow-hidden">
                 <form
                     className="w-auto"
-                    onSubmit={handleSubmit}
                 >
                     <div className="w-full flex flex-col items-start space-y-4 py-4 pl-10">
                         <div className="flex flex-col">
