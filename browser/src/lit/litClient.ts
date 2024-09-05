@@ -9,8 +9,6 @@ import { litActionCode } from './litAction';
 
 const CHAIN = 'sepolia';
 
-// const userRand = '0x1cb7af425ea1c5c6cd9ab3290423881218fab4af3c2160abbaaf537ffac90ca2';
-
 const genActionSource = () => {
     return litActionCode
 }
