@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+import { signGetAuctionInfo } from "../../sign/signClient";
+
 function ManageAuction() {
     const [auctionData, setAuctionData] = useState({
         auctionId: "",
@@ -16,7 +18,7 @@ function ManageAuction() {
         }
     }, [logs]);
 
-    const addLog = (message: string) => {
+    const consoleLog = (message: string) => {
         setLogs(prevLogs => [...prevLogs, message]);
     };
 
@@ -28,14 +30,12 @@ function ManageAuction() {
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const getAuctionInfo = async () => {
+        await signGetAuctionInfo(auctionData.auctionId, consoleLog);
+    }
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const parsedData = {
-            auctionId: auctionData.auctionId,
-            userRandomness: auctionData.userRandomness,
-        };
-        console.log(parsedData);
-        addLog(`Auction ID: ${parsedData.auctionId}`);
     };
 
     return (
@@ -45,6 +45,7 @@ function ManageAuction() {
             </div>
             <div className="h-full w-full flex flex-row overflow-hidden">
                 <form
+                    onSubmit={handleSubmit}
                     className="w-auto"
                 >
                     <div className="w-full flex flex-col items-start space-y-4 py-4 pl-10">
@@ -62,6 +63,7 @@ function ManageAuction() {
                     </div>
                     <div className="pl-10">
                         <button
+                            onClick={getAuctionInfo}
                             className="w-80 bg-[#00a2e7] text-white rounded-md px-4 py-2 hover:bg-[#00a8f0] hover:shadow-lg transition-all duration-300"
                         >
                             Get Auction Info
