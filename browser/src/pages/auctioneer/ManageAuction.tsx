@@ -99,7 +99,11 @@ function ManageAuction() {
         const { retStatus, retVal } = await litMain("settlementClaimBid", { auctionId: auctionData.auctionId, userRand: computeRandBytesHex(), claimerAddress: auctionData.bidClaimAddress });
         switch (retStatus) {
             case "success": {
-                consoleLog(`Bid claimed successfully! Claim tx hash: ${retVal.txHash}`);
+                if (retVal.txHash === "") {
+                    consoleLog("Bid claim transaction broadcasted. It should be confirmed on the blockchain shortly");
+                } else{
+                    consoleLog(`Bid claimed successfully! Claim tx hash: ${retVal.txHash}`);
+                }
                 break;
             }
             case "eAuctionNotEnded": {

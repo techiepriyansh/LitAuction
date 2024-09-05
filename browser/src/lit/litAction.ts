@@ -310,7 +310,11 @@ const _litActionCode = async () => {
                         await withTimeout(txResponse.wait());
                         return txResponse.hash;
                     } catch (error) {
-                        return null;
+                        if (error.toString() == (new Error('Promise timed out')).toString()) {
+                            return "";
+                        } else {
+                            return null;
+                        }
                     }
                 };
 
@@ -471,7 +475,7 @@ const _litActionCode = async () => {
             }
 
             const { txHash } = await transferMaxBalance(privState.bidAccountPrivateKey, pClaimerAddress);
-            if (txHash) {
+            if (txHash != null) {
                 return litReturn("success", { txHash });
             } else {
                 return litReturn("eBidTransferFailed", { holderWalletAddress: (new ethers.Wallet(privState.bidAccountPrivateKey)).address });
@@ -489,7 +493,7 @@ const _litActionCode = async () => {
             }
 
             const { txHash } = await transferMaxBalance(auxWallet.privateKey, pClaimerAddress);
-            if (txHash) {
+            if (txHash != null) {
                 return litReturn("success", { txHash });
             } else {
                 return litReturn("eBidTransferFailed", { holderWalletAddress: auxWallet.address });

@@ -133,7 +133,11 @@ function Bidder() {
         const { retStatus, retVal } = await litMain("settlementRevertLosingBid", { auctionId: auctionData.auctionId, userRand: randBytesHex, claimerAddress: auctionData.claimAddress });
         switch (retStatus) {
             case "success": {
-                consoleLog(`Bid refunded successfully! Refund tx hash: ${retVal.txHash}`);
+                if (retVal.txHash === "") {
+                    consoleLog("Bid refund transaction broadcasted. It should be confirmed on the blockchain shortly.")
+                } else {
+                    consoleLog(`Bid refunded successfully! Refund tx hash: ${retVal.txHash}`);
+                }
                 break;
             }
             case "eAuctionNotEnded": {
