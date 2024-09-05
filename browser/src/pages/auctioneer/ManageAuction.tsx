@@ -60,8 +60,10 @@ function ManageAuction() {
     }
 
     const getAuxWalletAddress = async () => {
-        const randBytes = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.userRandomness));
-        const randBytesHex = ethers.utils.hexlify(randBytes);
+        const userRandHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.userRandomness));
+        const auctionIdHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.auctionId));
+        const randBytes = ethers.utils.keccak256(ethers.utils.concat([userRandHash, auctionIdHash]));
+        const randBytesHex = ethers.utils.hexlify(userRandHash); // TODO: replace with randBytes
 
         consoleLog("Generating auxiliary wallet address...")
         const { retVal } = await litMain("genAuxWallet", { auctionId: auctionData.auctionId, userRand: randBytesHex });
