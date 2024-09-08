@@ -61,8 +61,8 @@ function ManageAuction() {
 
     const computeRandBytesHex = (): string => {
         const userRandHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.userRandomness));
-        const auctionIdHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.auctionId));
-        const randBytes = ethers.utils.keccak256(ethers.utils.concat([userRandHash, auctionIdHash]));
+        // const auctionIdHash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(auctionData.auctionId));
+        // const randBytes = ethers.utils.keccak256(ethers.utils.concat([userRandHash, auctionIdHash]));
         const randBytesHex = ethers.utils.hexlify(userRandHash); // TODO: replace with randBytes
         return randBytesHex;
     }
