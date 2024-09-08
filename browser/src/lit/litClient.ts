@@ -11,7 +11,7 @@ const CHAIN = 'sepolia';
 const ACTION_CODE_IPFS_HASH='QmPyPRyYJ5fe87of738nAMUAJhzBC3EaQNNbnuRbvHrZnm';
 const TRUSTED_CONTRIBUTIONS = [
     // For now, we  only have one trusted contribution in the MVP
-    "SPA_MemLjHzCyXFkteRm4wTnh",
+    "SPA_IwbUn79iW9YS3qzHZ99Hp",
 ]
 
 const genActionSource = () => {
