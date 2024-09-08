@@ -8,6 +8,7 @@ import {ethers} from 'ethers';
 import { litActionCode } from './litAction';
 
 const CHAIN = 'sepolia';
+const ACTION_CODE_IPFS_HASH='QmPyPRyYJ5fe87of738nAMUAJhzBC3EaQNNbnuRbvHrZnm';
 const TRUSTED_CONTRIBUTIONS = [
     // For now, we  only have one trusted contribution in the MVP
     "SPA_MemLjHzCyXFkteRm4wTnh",
@@ -101,11 +102,11 @@ export const litMain = async (pAction, pActionParams) => {
             contractAddress: '',
             standardContractType: '',
             chain,
-            method: 'eth_getBalance',
-            parameters: [':userAddress', 'latest'],
+            method: '',
+            parameters: [':currentActionIpfsId'],
             returnValueTest: {
-                comparator: '>=',
-                value: '0',
+                comparator: '=',
+                value: ACTION_CODE_IPFS_HASH,
             },
         },
     ];
@@ -174,7 +175,7 @@ export const litMain = async (pAction, pActionParams) => {
 
     const res = await client.executeJs({
         sessionSigs,
-        code: actionSourceCode,
+        ipfsId: ACTION_CODE_IPFS_HASH,
         jsParams,
     });
 
