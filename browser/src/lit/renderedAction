@@ -1,0 +1,448 @@
+(async () => {
+  const CHAIN = "sepolia";
+  const SIGN_SDK_BUNDLE_ACTION = "QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2";
+  const STATE_SCHEMA_ID = "SPS_ie1xKUzqwI_Pba1Qto0tc";
+  const METADATA_SCHEMA_ID = "SPS_cKmgkXVeojP-CdiH7kK7K";
+  const PRIVATE_STATE_INDEXING_VALUE_PREFIX = "priv-initial-test-9";
+  const PUBLIC_STATE_INDEXING_VALUE_PREFIX = "pub-initial-test-9";
+  const DEFAULT_PUB_STATE = {
+    started: false,
+    ended: false,
+    curRound: 0,
+    curRoundStartTimestamp: 0
+  };
+  const DEFAULT_PRIV_STATE = {
+    highestBidder: "",
+    highestBid: "0x0",
+    bidAccountPrivateKey: "",
+    nftAccountPrivateKey: "",
+    prevRoundWinner: ""
+  };
+  const PROMISE_TIMEOUT = 2e4;
+  const withTimeout = (promise) => {
+    return Promise.race([
+      promise,
+      new Promise(
+        (_, reject) => setTimeout(() => reject(new Error("Promise timed out")), PROMISE_TIMEOUT)
+      )
+    ]);
+  };
+  let genesisRandBytes = ethers.utils.arrayify(new Uint8Array(80));
+  const applyContribution = async (contributionId) => {
+    const byteWiseXor = (a, b) => {
+      return a.map((v, i) => v ^ b[i]);
+    };
+    const resStr = await Lit.Actions.call({
+      ipfsId: SIGN_SDK_BUNDLE_ACTION,
+      params: {
+        pRequestType: "query",
+        pOpts: { env: "testnet" },
+        pMethod: "queryAttestation",
+        pArgs: [contributionId]
+      }
+    });
+    const res = JSON.parse(resStr);
+    const contribution = JSON.parse(JSON.parse(res.data).metadata);
+    const contributionRandPt = await Lit.Actions.decryptAndCombine({
+      accessControlConditions: pAccessControlConditions,
+      ciphertext: contribution.ct,
+      dataToEncryptHash: contribution.hash,
+      authSig: null,
+      chain: CHAIN
+    });
+    const contributionRandBytes = ethers.utils.arrayify(contributionRandPt);
+    genesisRandBytes = byteWiseXor(genesisRandBytes, contributionRandBytes);
+  };
+  for (let trustedContribution of pTrustedContributions) {
+    await applyContribution(trustedContribution);
+  }
+  const genesisPrivateKey = genesisRandBytes.slice(0, 32);
+  const genesisPrivateKeyHex = ethers.utils.hexlify(genesisPrivateKey);
+  const genesisWallet = new ethers.Wallet(genesisPrivateKey);
+  const genesisEncryptionKey = genesisRandBytes.slice(32, 48);
+  const genesisAuxContribution = genesisRandBytes.slice(48, 80);
+  const rpcUrl = await Lit.Actions.getRpcUrl({ chain: CHAIN });
+  const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+  const genAuxWallet = async () => {
+    const userRandPt = await Lit.Actions.decryptAndCombine({
+      accessControlConditions: pAccessControlConditions,
+      ciphertext: pUserRandCt,
+      dataToEncryptHash: pUserRandHash,
+      authSig: null,
+      chain: CHAIN
+    });
+    const userAuxContribution = ethers.utils.arrayify(userRandPt).slice(0, 32);
+    const auxPrivateKey = ethers.utils.keccak256(ethers.utils.concat([userAuxContribution, genesisAuxContribution]));
+    const auxWallet = new ethers.Wallet(auxPrivateKey);
+    return auxWallet;
+  };
+  const getMetadata = async () => {
+    const resStr = await Lit.Actions.call({
+      ipfsId: SIGN_SDK_BUNDLE_ACTION,
+      params: {
+        pRequestType: "query",
+        pOpts: { env: "testnet" },
+        pMethod: "queryAttestation",
+        pArgs: [pAuctionId]
+      }
+    });
+    const res = JSON.parse(resStr);
+    return JSON.parse(JSON.parse(res.data).metadata);
+  };
+  const getPublicState = async () => {
+    const resStr = await Lit.Actions.call({
+      ipfsId: SIGN_SDK_BUNDLE_ACTION,
+      params: {
+        pRequestType: "query",
+        pOpts: { env: "testnet" },
+        pMethod: "queryAttestationList",
+        pArgs: [{
+          schemaId: STATE_SCHEMA_ID,
+          indexingValue: `${PUBLIC_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+          attester: genesisWallet.address,
+          page: 1
+        }]
+      }
+    });
+    const res = JSON.parse(resStr);
+    if (res.rows.length > 0) {
+      return JSON.parse(JSON.parse(res.rows[0].data).state);
+    } else {
+      return DEFAULT_PUB_STATE;
+    }
+  };
+  const setPublicState = async (state) => {
+    await Lit.Actions.runOnce(
+      { waitForResponse: true, name: "SignProtocol_createAttestation" },
+      async () => await Lit.Actions.call({
+        ipfsId: SIGN_SDK_BUNDLE_ACTION,
+        params: {
+          pRequestType: "write",
+          pOpts: { privateKey: genesisPrivateKeyHex },
+          pMethod: "createAttestation",
+          pArgs: [{
+            schemaId: STATE_SCHEMA_ID,
+            data: {
+              state: JSON.stringify(state)
+            },
+            indexingValue: `${PUBLIC_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`
+          }]
+        }
+      })
+    );
+  };
+  const encryptData = async (data) => {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      genesisEncryptionKey,
+      { name: "AES-GCM" },
+      false,
+      ["encrypt"]
+    );
+    const iv = ethers.utils.randomBytes(12);
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data
+    );
+    return { encryptedData: new Uint8Array(encrypted), iv };
+  };
+  const decryptData = async (encryptedData, iv) => {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      genesisEncryptionKey,
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"]
+    );
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv },
+      key,
+      encryptedData
+    );
+    return new Uint8Array(decrypted);
+  };
+  const setPrivateState = async (state) => {
+    await Lit.Actions.runOnce(
+      { waitForResponse: true, name: "SignProtocol_createAttestation" },
+      async () => {
+        const stateJsonBytes = ethers.utils.toUtf8Bytes(JSON.stringify(state));
+        const { encryptedData, iv } = await encryptData(stateJsonBytes);
+        const encryptedState = ethers.utils.hexlify(ethers.utils.concat([iv, encryptedData]));
+        const res = await Lit.Actions.call({
+          ipfsId: SIGN_SDK_BUNDLE_ACTION,
+          params: {
+            pRequestType: "write",
+            pOpts: { privateKey: genesisPrivateKeyHex },
+            pMethod: "createAttestation",
+            pArgs: [{
+              schemaId: STATE_SCHEMA_ID,
+              data: {
+                state: encryptedState
+              },
+              indexingValue: `${PRIVATE_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`
+            }]
+          }
+        });
+        return JSON.stringify(res);
+      }
+    );
+  };
+  const getPrivateState = async () => {
+    const resStr = await Lit.Actions.call({
+      ipfsId: SIGN_SDK_BUNDLE_ACTION,
+      params: {
+        pRequestType: "query",
+        pOpts: { env: "testnet" },
+        pMethod: "queryAttestationList",
+        pArgs: [{
+          schemaId: STATE_SCHEMA_ID,
+          indexingValue: `${PRIVATE_STATE_INDEXING_VALUE_PREFIX}:${pAuctionId}`,
+          attester: genesisWallet.address,
+          page: 1
+        }]
+      }
+    });
+    const res = JSON.parse(resStr);
+    if (res.rows.length > 0) {
+      const encryptedState = JSON.parse(res.rows[0].data).state;
+      const encryptedStateBytes = ethers.utils.arrayify(encryptedState);
+      const iv = encryptedStateBytes.slice(0, 12);
+      const encryptedData = encryptedStateBytes.slice(12);
+      const decryptedBytes = await decryptData(encryptedData, iv);
+      const stateJson = ethers.utils.toUtf8String(decryptedBytes);
+      return JSON.parse(stateJson);
+    } else {
+      return DEFAULT_PRIV_STATE;
+    }
+  };
+  const checkERC1155NFTOwnership = async (nftContractAddress, nftTokenId, walletAddress) => {
+    const abi = [
+      "function balanceOf(address account, uint256 id) view returns (uint256)"
+    ];
+    try {
+      const nftContract = new ethers.Contract(nftContractAddress, abi, provider);
+      const balance = await nftContract.balanceOf(walletAddress, nftTokenId);
+      return balance.gt(0);
+    } catch (error) {
+      return false;
+    }
+  };
+  const transferERC1155NFT = async (ownerPrivateKey, receiverAddress, nftContractAddress, nftTokenId, amount = 1) => {
+    const resStr = await Lit.Actions.runOnce(
+      { waitForResponse: true, name: "transferERC1155NFT" },
+      async () => {
+        const fn = async () => {
+          const ownerWallet = new ethers.Wallet(ownerPrivateKey, provider);
+          const nftContract = new ethers.Contract(
+            nftContractAddress,
+            [
+              "function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data) external"
+            ],
+            ownerWallet
+          );
+          try {
+            const tx = await nftContract.safeTransferFrom(
+              ownerWallet.address,
+              receiverAddress,
+              nftTokenId,
+              amount,
+              "0x"
+            );
+            const receipt = await withTimeout(tx.wait());
+            return receipt.transactionHash;
+          } catch (error) {
+            if (error.toString() == new Error("Promise timed out").toString()) {
+              return "";
+            } else {
+              return null;
+            }
+          }
+        };
+        return JSON.stringify({
+          txHash: await fn()
+        });
+      }
+    );
+    return JSON.parse(resStr);
+  };
+  const transferMaxBalance = async (fromPrivateKey, toAddress) => {
+    const resStr = await Lit.Actions.runOnce(
+      { waitForResponse: true, name: "transferERC1155NFT" },
+      async () => {
+        const fn = async () => {
+          const wallet = new ethers.Wallet(fromPrivateKey, provider);
+          const balance = await wallet.getBalance();
+          const gasPrice = await provider.getGasPrice();
+          const tx = {
+            to: toAddress,
+            gasPrice
+          };
+          try {
+            const gasLimit = await provider.estimateGas({ ...tx, from: wallet.address });
+            const estimatedGasCost = gasPrice.mul(gasLimit);
+            const amountToSend = balance.sub(estimatedGasCost);
+            tx.value = amountToSend;
+            tx.gasLimit = gasLimit;
+            const txResponse = await wallet.sendTransaction(tx);
+            await withTimeout(txResponse.wait());
+            return txResponse.hash;
+          } catch (error) {
+            if (error.toString() == new Error("Promise timed out").toString()) {
+              return "";
+            } else {
+              return null;
+            }
+          }
+        };
+        return JSON.stringify({
+          txHash: await fn()
+        });
+      }
+    );
+    return JSON.parse(resStr);
+  };
+  const litReturn = async (retStatus, retVal = null) => {
+    let response = { retStatus, retVal };
+    await Lit.Actions.setResponse({ response: JSON.stringify(response) });
+  };
+  let pubState = await getPublicState();
+  const tick = async () => {
+    if (!pubState.started || pubState.ended) {
+      return;
+    }
+    const metadata = await getMetadata();
+    const { roundMinDuration, endTimestamp } = metadata;
+    const curTimestamp = Date.now();
+    const shouldUpdateRound = curTimestamp > pubState.curRoundStartTimestamp + roundMinDuration;
+    const shouldEndAuction = curTimestamp > endTimestamp;
+    if (shouldUpdateRound || shouldEndAuction) {
+      pubState.curRound++;
+      pubState.curRoundStartTimestamp = curTimestamp;
+      let privState2 = await getPrivateState();
+      privState2.prevRoundWinner = privState2.highestBidder;
+      await setPrivateState(privState2);
+    }
+    if (shouldEndAuction) {
+      pubState.ended = true;
+    }
+    if (shouldUpdateRound || shouldEndAuction) {
+      await setPublicState(pubState);
+    }
+  };
+  await tick();
+  switch (pAction) {
+    case "tick": {
+      return litReturn("success");
+    }
+    case "genAuxWallet": {
+      const auxWallet = await genAuxWallet();
+      return litReturn("success", { auxWalletAddress: auxWallet.address });
+    }
+    case "hostStartAuction": {
+      const auxWallet = await genAuxWallet();
+      if (pubState.started) {
+        return litReturn("eAuctionAlreadyStarted");
+      }
+      const metadata = await getMetadata();
+      const { nftContractAddress, nftTokenId } = metadata;
+      const didCommitNft = await checkERC1155NFTOwnership(nftContractAddress, nftTokenId, auxWallet.address);
+      if (didCommitNft) {
+        privState = await getPrivateState();
+        privState.nftAccountPrivateKey = auxWallet.privateKey;
+        await setPrivateState(privState);
+        pubState.started = true;
+        pubState.curRound = 1;
+        pubState.curRoundStartTimestamp = Date.now();
+        await setPublicState(pubState);
+        return litReturn("success", { startTimestamp: pubState.curRoundStartTimestamp });
+      }
+      return litReturn("eDidNotCommitNft");
+    }
+    case "userMakeBid": {
+      const auxWallet = await genAuxWallet();
+      if (!pubState.started || pubState.ended) {
+        return litReturn("eAuctionNotInProgress");
+      }
+      let privState2 = await getPrivateState();
+      const auxWalletBal = await provider.send("eth_getBalance", [auxWallet.address, "latest"]);
+      if (ethers.BigNumber.from(auxWalletBal).gt(ethers.BigNumber.from(privState2.highestBid))) {
+        privState2.highestBidder = auxWallet.address;
+        privState2.highestBid = auxWalletBal;
+        privState2.bidAccountPrivateKey = auxWallet.privateKey;
+      }
+      await setPrivateState(privState2);
+      const retVal = {
+        auxWalletBal
+      };
+      return litReturn("success", retVal);
+    }
+    case "userCheckWin": {
+      if (!pubState.started) {
+        return litReturn("eAuctionNotStarted");
+      }
+      const auxWallet = await genAuxWallet();
+      const privState2 = await getPrivateState();
+      const isWinner = auxWallet.address == privState2.prevRoundWinner;
+      return litReturn("success", {
+        isWinner,
+        ended: pubState.ended,
+        curRound: pubState.curRound
+      });
+    }
+    case "settlementClaimNft": {
+      if (!pubState.ended) {
+        return litReturn("eAuctionNotEnded");
+      }
+      const auxWallet = await genAuxWallet();
+      const privState2 = await getPrivateState();
+      if (auxWallet.address !== privState2.highestBidder) {
+        return litReturn("eNotAuctionWinner");
+      }
+      const metadata = await getMetadata();
+      const { nftContractAddress, nftTokenId } = metadata;
+      const nftOwnerPrivateKey = privState2.nftAccountPrivateKey;
+      const { txHash } = await transferERC1155NFT(nftOwnerPrivateKey, pClaimerAddress, nftContractAddress, nftTokenId);
+      if (txHash != null) {
+        return litReturn("success", { txHash });
+      } else {
+        return litReturn("eNftTransferFailed", { holderWalletAddress: new ethers.Wallet(nftOwnerPrivateKey).address });
+      }
+    }
+    case "settlementClaimBid": {
+      if (!pubState.ended) {
+        return litReturn("eAuctionNotEnded");
+      }
+      const auxWallet = await genAuxWallet();
+      const privState2 = await getPrivateState();
+      if (auxWallet.privateKey !== privState2.nftAccountPrivateKey) {
+        return litReturn("eNotAuctionHost");
+      }
+      const { txHash } = await transferMaxBalance(privState2.bidAccountPrivateKey, pClaimerAddress);
+      if (txHash != null) {
+        return litReturn("success", { txHash });
+      } else {
+        return litReturn("eBidTransferFailed", { holderWalletAddress: new ethers.Wallet(privState2.bidAccountPrivateKey).address });
+      }
+    }
+    case "settlementRevertLosingBid": {
+      if (!pubState.ended) {
+        return litReturn("eAuctionNotEnded");
+      }
+      const auxWallet = await genAuxWallet();
+      const privState2 = await getPrivateState();
+      if (auxWallet.address === privState2.highestBidder) {
+        return litReturn("eNotLosingBidder");
+      }
+      const { txHash } = await transferMaxBalance(auxWallet.privateKey, pClaimerAddress);
+      if (txHash != null) {
+        return litReturn("success", { txHash });
+      } else {
+        return litReturn("eBidTransferFailed", { holderWalletAddress: auxWallet.address });
+      }
+    }
+    default: {
+      return litReturn("eInvalidAction");
+    }
+  }
+})();
