@@ -8,6 +8,10 @@ import {ethers} from 'ethers';
 import { litActionCode } from './litAction';
 
 const CHAIN = 'sepolia';
+const TRUSTED_CONTRIBUTIONS = [
+    // For now, we  only have one trusted contribution in the MVP
+    "SPA_MemLjHzCyXFkteRm4wTnh",
+]
 
 const genActionSource = () => {
     return litActionCode
@@ -149,6 +153,7 @@ export const litMain = async (pAction, pActionParams) => {
     );
 
     let jsParams = {
+        pTrustedContributions: TRUSTED_CONTRIBUTIONS,
         pAccessControlConditions: accessControlConditions,
         pAction,
         pAuctionId: pActionParams.auctionId,

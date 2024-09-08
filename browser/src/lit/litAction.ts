@@ -1,11 +1,6 @@
 // @ts-nocheck
 
 const _litActionCode = async () => {
-    // TODO: change this to secure randomness, with only this action being able to decrypt it
-    const GENESIS_RANDOMNESS = {
-        ct: "gjkAIUHtAY31jzqTkzWf21jEq1nv0PJeuO4ywSbHwY5LfMe/pijqLSD+to84aGYpb7aD3zu0B68MtKRtIJfdfHBfGekLXwcLA7DibJnNWQakAfBPYG0/ptZRIaG8STAhtBKAySKLKSQy+TMoLkLe85/dO9c9gDJCY6EJTLvi/EPSnnwySfxSi1j2+DDPEa5qsOZQ1hnDq+eM2DSNGhqc4kkRsgLUKGaX7ip3xYT2M9NUjX/15H/SGEfp+vUJ1Phz9o8SvBBY8/pWg5hT77X2H4a4D197EB2C/1FxDM0vNG3Z5UWnovcq1QQrnlg0oJFa7dNDCJg6Ag==",
-        hash: "9e275d2cab2b92f9a679659b862a9622ec3bef45af39cc069ed1c039d984e7ee",
-    }
     const CHAIN = 'sepolia';
     const SIGN_SDK_BUNDLE_ACTION = 'QmNMqC1xfFjAwVexZkNqF9ndTtcNUg5z4zmoJq6FMaJYX2';
     const STATE_SCHEMA_ID = 'SPS_ie1xKUzqwI_Pba1Qto0tc';
@@ -38,16 +33,41 @@ const _litActionCode = async () => {
         ])
     }
 
-    const genesisRandPt = await Lit.Actions.decryptAndCombine({
-        accessControlConditions: pAccessControlConditions,
-        ciphertext: GENESIS_RANDOMNESS.ct,
-        dataToEncryptHash: GENESIS_RANDOMNESS.hash,
-        authSig: null,
-        chain: CHAIN,
-    });
+    let genesisRandBytes = ethers.utils.arrayify(new Uint8Array(80));
+    const applyContribution = async (contributionId) => {
+        const byteWiseXor = (a, b) => {
+            return a.map((v, i) => v ^ b[i]);
+        }
+        
+        const resStr = await Lit.Actions.call({
+            ipfsId: SIGN_SDK_BUNDLE_ACTION,
+            params: {
+                pRequestType: "query",
+                pOpts: { env: "testnet" },
+                pMethod: "queryAttestation",
+                pArgs: [contributionId],
+            },
+        });
 
-    const genesisRandBytes = ethers.utils.arrayify(genesisRandPt);
-    
+        const res = JSON.parse(resStr);
+        const contribution = JSON.parse(JSON.parse(res.data).metadata);
+
+        const contributionRandPt = await Lit.Actions.decryptAndCombine({
+            accessControlConditions: pAccessControlConditions,
+            ciphertext: contribution.ct,
+            dataToEncryptHash: contribution.hash,
+            authSig: null,
+            chain: CHAIN,
+        });
+        const contributionRandBytes = ethers.utils.arrayify(contributionRandPt);
+
+        genesisRandBytes = byteWiseXor(genesisRandBytes, contributionRandBytes);
+    }
+
+    for (let trustedContribution of pTrustedContributions) {
+        await applyContribution(trustedContribution);
+    }
+
     const genesisPrivateKey = genesisRandBytes.slice(0, 32);
     const genesisPrivateKeyHex = ethers.utils.hexlify(genesisPrivateKey);
     const genesisWallet = new ethers.Wallet(genesisPrivateKey);
